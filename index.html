@@ -1,200 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Greybox – DevOps & Tools Hub</title>
-  <style>
-    :root {
-      --bg: #0e1117;
-      --panel: #161b22;
-      --accent: #00c2ff;
-      --text: #d9e0ee;
-      --muted: #8892a6;
-      --border: #2b313c;
-    }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Greybox – DevOps & Tools Hub</title>
+    <style>
+        :root {
+            --bg: #0e1117;
+            --panel: #161b22;
+            --accent: #00c2ff;
+            --text: #d9e0ee;
+            --muted: #8892a6;
+            --border: #2b313c;
+        }
 
-    body {
-      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      line-height: 1.6;
-    }
+        body {
+            font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            line-height: 1.6;
+        }
 
-    header {
-      text-align: center;
-      padding: 3rem 1rem;
-      background: linear-gradient(90deg, #0e1117 0%, #10131a 100%);
-      border-bottom: 1px solid var(--border);
-    }
+        header {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: linear-gradient(90deg, #0e1117 0%, #10131a 100%);
+            border-bottom: 1px solid var(--border);
+        }
 
-    header h1 {
-      font-size: 2.4rem;
-      margin: 0;
-      background: linear-gradient(90deg, var(--accent), #66e0ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+        header h1 {
+            font-size: 2.4rem;
+            margin: 0;
+            background: linear-gradient(90deg, var(--accent), #66e0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
-    header p {
-      color: var(--muted);
-      margin-top: 0.8rem;
-      font-size: 1.1rem;
-    }
+        header p {
+            color: var(--muted);
+            margin-top: 0.8rem;
+            font-size: 1.1rem;
+        }
 
-    main {
-      max-width: 900px;
-      margin: 3rem auto;
-      padding: 0 1.5rem;
-    }
+        main {
+            max-width: 900px;
+            margin: 3rem auto;
+            padding: 0 1.5rem;
+        }
 
-    section {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.8rem 2rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
+        section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.8rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
 
-    section:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    }
+        section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+        }
 
-    h2 {
-      color: var(--accent);
-      font-size: 1.3rem;
-      margin-top: 0;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0.4rem;
-      margin-bottom: 1rem;
-    }
+        h2 {
+            color: var(--accent);
+            font-size: 1.3rem;
+            margin-top: 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.4rem;
+            margin-bottom: 1rem;
+        }
 
-    ul {
-      list-style: none;
-      padding-left: 0;
-    }
+        ul {
+            list-style: none;
+            padding-left: 0;
+        }
 
-    li {
-      margin: 0.4rem 0;
-      padding: 0.3rem 0;
-    }
+        li {
+            margin: 0.4rem 0;
+            padding: 0.3rem 0;
+        }
 
-    code {
-      background: #1b1f27;
-      padding: 0.3rem 0.5rem;
-      border-radius: 6px;
-      color: #ffb86b;
-      font-size: 0.95rem;
-    }
+        code {
+            background: #1b1f27;
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            color: #ffb86b;
+            font-size: 0.95rem;
+        }
 
-    footer {
-      text-align: center;
-      color: var(--muted);
-      padding: 2rem 1rem 3rem;
-      border-top: 1px solid var(--border);
-      font-size: 0.95rem;
-    }
+        footer {
+            text-align: center;
+            color: var(--muted);
+            padding: 2rem 1rem 3rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
 
-    .repo-structure {
-      background: #0d1117;
-      border-radius: 8px;
-      padding: 1rem;
-      font-family: monospace;
-      white-space: pre;
-      font-size: 0.95rem;
-      border: 1px solid var(--border);
-      overflow-x: auto;
-    }
+        .repo-structure {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: monospace;
+            white-space: pre;
+            font-size: 0.95rem;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
 
-    a {
-      color: var(--accent);
-      text-decoration: none;
-    }
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
 
-    a:hover {
-      text-decoration: underline;
-    }
-  </style>
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 
 <body>
-  <header>
-    <h1>Greybox</h1>
-    <p>Unified Hub for DevOps Scripts, Tools, and Helm Charts</p>
-  </header>
+    <header>
+        <h1>Greybox</h1>
+        <p>Unified Hub for DevOps Scripts, Tools, and Helm Charts</p>
+    </header>
 
-  <main>
-    <section>
-      <h2>About</h2>
-      <p>
-        <strong>Greybox</strong> is my unified repository — a single, structured hub that hosts every
-        <em>tool</em>, <em>script</em>, and <em>Helm chart</em> I’ve built or curated.
-        Instead of scattering small projects across multiple repos, everything here lives together,
-        neatly categorized for clarity and scalability.
-      </p>
-      <p>
-        Each directory represents a functional layer of my personal DevOps ecosystem — from Kubernetes deployments
-        to automation utilities and experiment tools.
-      </p>
-    </section>
+    <main>
+        <section>
+            <h2>About</h2>
+            <p>
+                <strong>Greybox</strong> is my unified repository — a single, structured hub that hosts every
+                <em>tool</em>, <em>script</em>, and <em>Helm chart</em> I’ve built or curated.
+                Instead of scattering small projects across multiple repos, everything here lives together,
+                neatly categorized for clarity and scalability.
+            </p>
+            <p>
+                Each directory represents a functional layer of my personal DevOps ecosystem — from Kubernetes
+                deployments
+                to automation utilities and experiment tools.
+            </p>
+        </section>
 
-    <section>
-      <h2>Current Repository Structure</h2>
-      <div class="repo-structure">
-.greybox/
-├── CNAME
-├── index.html
-├── README.md
-├── helm/
-│   └── charts/
-├── tools/
-│   ├── bash/
-│   └── python/
-      </div>
-      <p><em>This structure will continue expanding as more toolsets and modules are added.</em></p>
-    </section>
+        <section>
+            <h2>Current Repository Structure</h2>
+            <div class="repo-structure">
+                .greybox/
+                ├── CNAME
+                ├── index.html
+                ├── README.md
+                ├── helm/
+                │ └── charts/
+                ├── tools/
+                │ ├── bash/
+                │ └── python/
+            </div>
+            <p><em>This structure will continue expanding as more toolsets and modules are added.</em></p>
+        </section>
 
-    <section>
-      <h2>Folders Overview</h2>
-      <ul>
-        <li><code>helm/</code> – Contains Helm-related assets and Kubernetes charts.</li>
-        <li><code>charts/</code> – Subdirectory under Helm for organized chart sets.</li>
-        <li><code>tools/bash/</code> – Shell scripts, cleanup utilities, and automation routines.</li>
-        <li><code>tools/python/</code> – Python-based utilities or APIs for system tasks or integrations.</li>
-        <li><code>index.html</code> – This very overview page, used for GitHub Pages or documentation landing.</li>
-        <li><code>CNAME</code> – Custom domain binding for the GitHub Pages site.</li>
-      </ul>
-    </section>
+        <section>
+            <h2>Folders Overview</h2>
+            <ul>
+                <li><code>helm/</code> – Contains Helm-related assets and Kubernetes charts.</li>
+                <li><code>charts/</code> – Subdirectory under Helm for organized chart sets.</li>
+                <li><code>tools/bash/</code> – Shell scripts, cleanup utilities, and automation routines.</li>
+                <li><code>tools/python/</code> – Python-based utilities or APIs for system tasks or integrations.</li>
+                <li><code>index.html</code> – This very overview page, used for GitHub Pages or documentation landing.
+                </li>
+                <li><code>CNAME</code> – Custom domain binding for the GitHub Pages site.</li>
+            </ul>
+        </section>
 
-    <section>
-      <h2>Philosophy</h2>
-      <p>
-        <em>“Build once, reuse everywhere.”</em>  
-        Every script and chart here is designed with reusability, observability, and minimal configuration in mind.
-        The repo is built to grow — whether for internal automation, Helm packaging, or simple CLI utilities.
-      </p>
-    </section>
+        <section>
+            <h2>Philosophy</h2>
+            <p>
+                <em>“Build once, reuse everywhere.”</em>
+                Every script and chart here is designed with reusability, observability, and minimal configuration in
+                mind.
+                The repo is built to grow — whether for internal automation, Helm packaging, or simple CLI utilities.
+            </p>
+        </section>
 
-    <section>
-      <h2>Future Expansion</h2>
-      <p>
-        The structure is modular — easily extensible to include:
-      </p>
-      <ul>
-        <li><code>/apps/</code> – Application prototypes or microservices.</li>
-        <li><code>/infra/</code> – Infrastructure definitions (Terraform, Ansible, etc.).</li>
-        <li><code>/scripts/</code> – Cross-language or mixed orchestration scripts.</li>
-        <li><code>/docs/</code> – Reference notes, design documents, or usage manuals.</li>
-      </ul>
-    </section>
-  </main>
+        <section>
+            <h2>Future Expansion</h2>
+            <p>
+                The structure is modular — easily extensible to include:
+            </p>
+            <ul>
+                <li><code>/apps/</code> – Application prototypes or microservices.</li>
+                <li><code>/infra/</code> – Infrastructure definitions (Terraform, Ansible, etc.).</li>
+                <li><code>/scripts/</code> – Cross-language or mixed orchestration scripts.</li>
+                <li><code>/docs/</code> – Reference notes, design documents, or usage manuals.</li>
+            </ul>
+        </section>
+    </main>
 
-  <footer>
-    <p>© 2025 Greybox • Designed & maintained by <strong>ThanhPhat IT</strong></p>
-  </footer>
+    <footer>
+        <p>© 2025 Greybox • Designed & maintained by <strong>ThanhPhat IT</strong></p>
+    </footer>
 </body>
+
 </html>
