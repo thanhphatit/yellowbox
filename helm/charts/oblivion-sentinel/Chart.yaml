@@ -1,0 +1,16 @@
+apiVersion: v2
+name: oblivion-sentinel
+description: Scan Kubernetes pods by health/time and apply a two-phase remediation, delete bad pods first, uninstall Helm releases later if degradation persists.
+type: application
+version: 0.0.10
+appVersion: "0.0.6"
+keywords:
+  - cleanup
+  - janitor
+  - reaper
+  - kubernetes
+  - helm
+home: https://greybox.itblognote.com/helm/charts/oblivion-sentinel
+maintainers:
+  - name: platform-team
+    email: thanhphat@itblognote.com

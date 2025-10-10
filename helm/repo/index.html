@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Greybox Helm Repository</title>
+<style>
+    body {
+        font: 16px/1.6 system-ui, Segoe UI, Inter, sans-serif;
+        background: #0e1117;
+        color: #d9e0ee;
+        margin: 0
+    }
+
+    main {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 16px
+    }
+
+    h1 {
+        font-size: 28px;
+        margin: 0 0 8px;
+        background: linear-gradient(90deg, #00c2ff, #66e0ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent
+    }
+
+    .card {
+        background: #161b22;
+        border: 1px solid #2b313c;
+        border-radius: 12px;
+        padding: 16px;
+        margin: 12px 0
+    }
+
+    pre {
+        background: #0d1117;
+        border: 1px solid #2b313c;
+        border-radius: 10px;
+        padding: 12px;
+        overflow: auto
+    }
+
+    code {
+        font-family: ui-monospace, Menlo, Consolas, monospace
+    }
+
+    a {
+        color: #00c2ff;
+        text-decoration: none
+    }
+
+    a:hover {
+        text-decoration: underline
+    }
+
+    small {
+        color: #8b95a9
+    }
+</style>
+<main>
+    <h1>Greybox – Helm Repository</h1>
+    <p><small>Repo URL: <code>https://greybox.itblognote.com/helm/repo</code></small></p>
+    <div class="card">
+        <h2>1) Add &amp; Update</h2>
+        <pre><code>helm repo add greybox https://greybox.itblognote.com/helm/repo
+helm repo update</code></pre>
+    </div>
+    <div class="card">
+        <h2>2) Install any chart</h2>
+        <pre><code>helm install my-release greybox/oblivion-sentinel \
+  --version 0.1.0 \
+  -n devops --create-namespace</code></pre>
+    </div>
+    <div class="card">
+        <h2>3) View repository index</h2>
+        <a href="./index.yaml">index.yaml</a>
+    </div>
+</main>

@@ -1,0 +1,154 @@
+# ===== Container image =====
+# Using bitnami/kubectl and install helm + jq at runtime (simple, reliable).
+image:
+  repository: alpine/k8s #dtzar/helm-kubectl
+  tag: "1.30.3"
+  pullPolicy: IfNotPresent
+
+# fullnameOverride: "oblivion-sentinel"
+
+# ===== Schedule =====
+reaper:
+  schedule: "0 8,22 * * *" # Run daily at 8h or 22h by HCM or UTC: "0 1,15 * * *" (k8s timezone)
+  timeZone: null # "Asia/Ho_Chi_Minh"
+  startingDeadlineSeconds: null # 3600
+metrics:
+  enable: false
+  schedule: "*/5 * * * *" # every 5 minutes
+  timeZone: null # "Asia/Ho_Chi_Minh"
+  startingDeadlineSeconds: null # 300
+
+# ===== ServiceAccount =====
+serviceAccount:
+  create: true
+  name: ""          # empty = use chart fullname
+  annotations: {}
+
+# ===== RBAC =====
+rbac:
+  create: true
+  # WARNING: clusterAdmin=true grants cluster-admin for simplicity (demo).
+  # In production, keep false and use the scoped resources below.
+  clusterAdmin: false
+
+# If rbac.clusterAdmin=false, these are the broad (but scoped) permissions
+# typically sufficient for 'helm uninstall' on common charts.
+rbacResources:
+  - apiGroups: [""]
+    resources: ["pods","services","configmaps","secrets","serviceaccounts","persistentvolumeclaims"]
+    verbs: ["*"]
+  - apiGroups: ["apps"]
+    resources: ["deployments","daemonsets","statefulsets","replicasets"]
+    verbs: ["*"]
+  - apiGroups: ["batch"]
+    resources: ["jobs","cronjobs"]
+    verbs: ["*"]
+  - apiGroups: ["networking.k8s.io","extensions"]
+    resources: ["ingresses","ingressclasses","networkpolicies"]
+    verbs: ["*"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["*"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["*"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles","rolebindings"]
+    verbs: ["*"]
+
+# ===== Main configuration (exported to a ConfigMap) =====
+config:
+  # --- Namespace filters ---
+  INCLUDE_NS_LIST: "production,staging"                 # Only scan these namespaces (CSV). Leave empty to include all.
+  INCLUDE_NS_REGEX: ""                                  # Optional regex include filter, e.g. "^(production|staging)$"
+
+  # Namespaces to exclude regardless (regex and CSV)
+  EXCLUDE_NS_REGEX: "^(kube-|devops-|calico-system$|tigera-operator$|ingress-nginx$|monitoring$|middleware$|default$)"  # Regex to skip system namespaces
+  EXCLUDE_NS_LIST: "devops-manager,kube-system,calico-system"  # Explicit namespace names to exclude
+
+  # Exclude releases by name regex
+  EXCLUDE_RELEASE_REGEX: "^(core-|platform-).*$"        # Skip Helm releases whose names match this regex
+
+  # Opt-out key: if any Pod in a release has this label OR annotation set to "true", skip the whole release
+  OPT_OUT_KEY: "oblivion/ignore"                       # Label/annotation key for manual opt-out
+
+  # Allow per-Pod TTL override via annotation (number of days)
+  TTL_OVERRIDE_ANNOTATION_KEY: "oblivion/ttl-days"     # Annotation key for custom per-pod TTL (in days)
+  TTL_ENFORCE_MODE: "clear_zero"                       # How to sync TTL annotations: ignore | clear_zero | clear_all | set
+  TTL_ENFORCE_VALUE: ""                                # Used only if mode=set, e.g. "3"
+  APPLY_TO_PODS_TOO: "true"                            # Apply TTL enforcement to pods (not just releases)
+  RECONCILER_DRY_RUN: "false"                          # "true" = print planned changes, do not modify annotations
+
+  # --- Phase 1 (softer remediation): delete bad pods after N days ---
+  POD_TTL_DAYS: "3"                                    # Delete bad pods after this many days “stuck bad”
+  DELETE_PODS_ON_PHASE1: "true"                        # Whether to actually delete pods in Phase 1
+  DELETE_PODS_FORCE: "true"                            # Force delete pods (--force --grace-period=0)
+  MAX_PODS_DELETE_PER_RUN: "500"                       # Safety limit for number of pods deleted per run
+
+  # --- Phase 2 (hard remediation): uninstall release after M days if still bad ---
+  HELM_TTL_DAYS: "6"                                   # Days a release must remain bad before uninstall
+  ERROR_RATIO_THRESHOLD: "60"                          # % of pods in error needed to trigger uninstall
+  MAX_RELEASES_PER_RUN: "50"                           # Safety cap: max Helm releases uninstalled per run
+
+  # Health classification knobs
+  MIN_RESTARTS: "3"                                    # >=N restarts = consider persistent error (0 disables check)
+  ERROR_REASONS: "CrashLoopBackOff,ImagePullBackOff,ErrImagePull,CreateContainerConfigError,CreateContainerError,RunContainerError,ContainerCannotRun,InvalidImageName"  # Pod status reasons considered “bad”
+
+  # Execution flags
+  DRY_RUN: "true"                                      # If true, simulate (don’t delete/uninstall) but still annotate sticky state
+  HELM_TIMEOUT: "5m"                                   # Helm uninstall timeout
+  HELM_WAIT: "true"                                    # Wait for Helm uninstall to finish before continuing
+  HELM_DEBUG: "false"                                  # Enable Helm debug logging for uninstall
+
+  # Sticky mode
+  STICKY_MODE: "true"                                  # Enable sticky tracking of “bad-since” timestamps
+  BAD_SINCE_ANNOTATION_KEY: "oblivion/bad-since"       # Annotation key storing the first time release became bad
+  BACKFILL_NOTREADY: "true"                            # Backfill bad-since from Pod Ready.lastTransitionTime if available
+  HEALTHY_CLEAR_AFTER_RUNS: "3"                        # Clear bad-since only after X consecutive healthy runs (0 = disable)
+  HEALTHY_STABLE_MINUTES: "30"                         # Minimum stable healthy period (minutes) to count toward clearing
+  HEALTHY_RUNS_ANNOTATION_KEY: "oblivion/healthy-runs" # Annotation key to track consecutive healthy runs
+  RESET_BAD_SINCE_WHEN_HEALTHY: "false"                # Legacy: if true (and HEALTHY_CLEAR_AFTER_RUNS=0), clear immediately when healthy
+
+  # Prometheus Pushgateway (optional)
+  METRICS_ENABLE: "false"                              # Enable metrics push to Prometheus Pushgateway
+  PUSHGATEWAY_URL: "http://prometheus-pushgateway.monitoring.svc:9091"  # Pushgateway endpoint
+  PUSHGATEWAY_JOB: "oblivion_sentinel"                 # Pushgateway job label
+  PUSHGATEWAY_INSTANCE: ""                             # Optional instance label for metrics
+  PUSHGATEWAY_CLUSTER: ""                              # Optional cluster label for metrics
+
+# ===== Pod options =====
+resources: {}
+nodeSelector: {}
+tolerations: #[]
+  - key: "kubernetes.azure.com/scalesetpriority"
+    operator: "Equal"
+    value: "spot"
+    effect: "NoSchedule"
+
+affinity: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  runAsNonRoot: false
+  allowPrivilegeEscalation: false
+  # readOnlyRootFilesystem: false
+
+# Optional extra customizations
+extraEnv: #[]
+  - name: HELM_CACHE_HOME
+    value: /tmp/helm/cache
+  - name: HELM_CONFIG_HOME
+    value: /tmp/helm/config
+  - name: HELM_DATA_HOME
+    value: /tmp/helm/data
+extraVolumeMounts: #[]
+  - name: tmp
+    mountPath: /tmp
+extraVolumes: #[]
+  - name: tmp
+    emptyDir: {}
+    

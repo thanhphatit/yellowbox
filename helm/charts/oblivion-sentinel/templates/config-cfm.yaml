@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "oblivion-sentinel.fullname" . }}-config
+  labels:
+    app.kubernetes.io/name: {{ include "oblivion-sentinel.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+{{- range $k, $v := .Values.config }}
+  {{ $k }}: "{{ $v }}"
+{{- end }}

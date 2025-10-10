@@ -1,0 +1,58 @@
+name: Build Helm Repo (main/helm/repo)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'helm/charts/**'
+      - '.github/workflows/helm-pages.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://greybox.itblognote.com/helm/repo
+      SRC_DIR: helm/charts
+      OUT_DIR: helm/repo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.15.3
+
+      - name: Package charts
+        run: |
+          mkdir -p "$OUT_DIR"
+          shopt -s nullglob
+          for d in "$SRC_DIR"/*; do
+            [ -d "$d" ] && [ -f "$d/Chart.yaml" ] || continue
+            echo "==> Packaging $d"
+            helm lint "$d" || true
+            helm package "$d" -d "$OUT_DIR"
+          done
+          ls -la "$OUT_DIR"
+
+      - name: Generate / merge index.yaml
+        run: |
+          INDEX="$OUT_DIR/index.yaml"
+          if [ -f "$INDEX" ]; then
+            helm repo index "$OUT_DIR" --url "$BASE_URL" --merge "$INDEX"
+          else
+            helm repo index "$OUT_DIR" --url "$BASE_URL"
+          fi
+
+      - name: Commit artifacts
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git add "$OUT_DIR"/*.tgz "$OUT_DIR"/index.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(helm): update packaged charts in helm/repo"
+            git push
+          fi

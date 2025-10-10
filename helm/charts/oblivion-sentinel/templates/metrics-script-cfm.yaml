@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "oblivion-sentinel.fullname" . }}-metrics
+  labels:
+    app.kubernetes.io/name: {{ include "oblivion-sentinel.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  metrics.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Config (same keys as values.yaml)
+    INCLUDE_NS_LIST="${INCLUDE_NS_LIST:-}"
+    INCLUDE_NS_REGEX="${INCLUDE_NS_REGEX:-}"
+    EXCLUDE_NS_REGEX="${EXCLUDE_NS_REGEX:-^(kube-|kube-system$|kube-public$|kube-node-lease$)}"
+    EXCLUDE_NS_LIST="${EXCLUDE_NS_LIST:-}"
+    EXCLUDE_RELEASE_REGEX="${EXCLUDE_RELEASE_REGEX:-^$}"
+
+    OPT_OUT_KEY="${OPT_OUT_KEY:-oblivion/ignore}"
+    BAD_SINCE_ANNOTATION_KEY="${BAD_SINCE_ANNOTATION_KEY:-oblivion/bad-since}"
+    HEALTHY_RUNS_ANNOTATION_KEY="${HEALTHY_RUNS_ANNOTATION_KEY:-oblivion/healthy-runs}"
+
+    POD_TTL_DAYS="${POD_TTL_DAYS:-3}"
+    HELM_TTL_DAYS="${HELM_TTL_DAYS:-6}"
+    ERROR_RATIO_THRESHOLD="${ERROR_RATIO_THRESHOLD:-60}"
+
+    METRICS_ENABLE="${METRICS_ENABLE:-false}"
+    PUSHGATEWAY_URL="${PUSHGATEWAY_URL:-}"
+    PUSHGATEWAY_JOB="${PUSHGATEWAY_JOB:-oblivion_sentinel}"
+    PUSHGATEWAY_INSTANCE="${PUSHGATEWAY_INSTANCE:-}"
+    PUSHGATEWAY_CLUSTER="${PUSHGATEWAY_CLUSTER:-}"
+
+    IFS=',' read -r -a EXCLUDE_NS_ARR <<< "$EXCLUDE_NS_LIST"
+    IFS=',' read -r -a INCLUDE_NS_ARR <<< "$INCLUDE_NS_LIST"
+
+    ns_is_included() {
+      local ns="$1" ok=1
+      if [[ -n "$INCLUDE_NS_REGEX" ]] && [[ "$ns" =~ $INCLUDE_NS_REGEX ]]; then ok=0; fi
+      for x in "${INCLUDE_NS_ARR[@]}"; do [[ -n "$x" && "$ns" == "$x" ]] && ok=0; done
+      if [[ -n "$INCLUDE_NS_REGEX" || -n "$INCLUDE_NS_LIST" ]]; then return $ok; fi
+      return 0
+    }
+    ns_is_excluded() {
+      local ns="$1"
+      [[ "$ns" =~ $EXCLUDE_NS_REGEX ]] && return 0
+      for x in "${EXCLUDE_NS_ARR[@]}"; do [[ -n "$x" && "$ns" == "$x" ]] && return 0; done
+      return 1
+    }
+
+    PODS_JSON="$(kubectl get pods --all-namespaces -o json)"
+    now_epoch="$(date +%s)"
+
+    pods_scanned=0
+    bad_pods_now=0
+
+    declare -A totalPodsHelm=() errorNowHelm=() nsOfHelm=()
+
+    mapfile -t POD_LINES < <(echo "$PODS_JSON" | jq -r '
+      .items[] | select(.metadata.deletionTimestamp == null) as $p
+      | ($p.status.conditions // [] | map(select(.type=="Ready" and .status!="True")) | length) as $notReadyCount
+      | [
+          $p.metadata.namespace,
+          $p.metadata.name,
+          (if $notReadyCount > 0 then "1" else "0" end),
+          ($p.metadata.labels["app.kubernetes.io/instance"] // ""),
+          ($p.metadata.annotations["meta.helm.sh/release-name"] // "")
+        ] | @tsv')
+
+    for line in "${POD_LINES[@]}"; do
+      IFS=$'\t' read -r ns name notReady relLbl relAnn <<< "$line"
+      ((pods_scanned++)) || true
+      ns_is_included "$ns" || continue
+      ns_is_excluded "$ns" && continue
+
+      [[ "$notReady" == "1" ]] && ((bad_pods_now++)) || true
+
+      rel="${relLbl:-}"; [[ -z "$rel" && -n "$relAnn" ]] && rel="$relAnn"
+      if [[ -n "$rel" ]]; then
+        key="${ns}__${rel}"; nsOfHelm["$key"]="$ns"; (( totalPodsHelm["$key"] += 1 ))
+        [[ "$notReady" == "1" ]] && (( errorNowHelm["$key"] += 1 )) || true
+      fi
+    done
+
+    phase2_candidates_now=0
+    for key in "${!totalPodsHelm[@]}"; do
+      ns="${nsOfHelm[$key]}"; rel="${key#*__}"
+      tot="${totalPodsHelm[$key]}"; errNow="${errorNowHelm[$key]:-0}"
+      ratioNow=0; (( 10#$tot > 0 )) && ratioNow=$(( 100 * errNow / tot ))
+      relSecret="$(kubectl -n "$ns" get secret -l owner=helm,name="$rel" -o json 2>/dev/null | jq -r '.items|sort_by(.metadata.creationTimestamp)|last|.metadata.name // ""')"
+      stickyAgeDays=0
+      if [[ -n "$relSecret" ]]; then
+        badSinceEpoch="$(kubectl -n "$ns" get secret "$relSecret" -o json 2>/dev/null | jq -r --arg k "$BAD_SINCE_ANNOTATION_KEY" '(.metadata.annotations[$k] // "") as $iso | if $iso=="" then 0 else ((fromdateiso8601? // (try (strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) catch 0)) // 0) end')"
+        (( badSinceEpoch > 0 )) && stickyAgeDays=$(( (now_epoch - badSinceEpoch) / 86400 ))
+      fi
+      if (( 10#$stickyAgeDays >= 10#$HELM_TTL_DAYS )) && (( 10#$ratioNow >= 10#$ERROR_RATIO_THRESHOLD )); then
+        ((phase2_candidates_now++)) || true
+      fi
+    done
+
+    echo "[metrics] pods_scanned=${pods_scanned} bad_pods_now=${bad_pods_now} phase2_candidates_now=${phase2_candidates_now}"
+
+    if [[ "${METRICS_ENABLE}" != "true" || -z "${PUSHGATEWAY_URL}" ]]; then
+      echo "[metrics] Pushgateway disabled or URL empty; skip push."
+      exit 0
+    fi
+
+    payload="# TYPE oblivion_sentinel_pods_scanned gauge
+    oblivion_sentinel_pods_scanned ${pods_scanned}
+    # TYPE oblivion_sentinel_bad_pods_now gauge
+    oblivion_sentinel_bad_pods_now ${bad_pods_now}
+    # TYPE oblivion_sentinel_phase2_candidates_now gauge
+    oblivion_sentinel_phase2_candidates_now ${phase2_candidates_now}
+    "
+
+    PG_PATH="${PUSHGATEWAY_URL%/}/metrics/job/${PUSHGATEWAY_JOB}"
+    [[ -n "${PUSHGATEWAY_INSTANCE}" ]] && PG_PATH="${PG_PATH}/instance/${PUSHGATEWAY_INSTANCE}"
+    [[ -n "${PUSHGATEWAY_CLUSTER}"  ]] && PG_PATH="${PG_PATH}/cluster/${PUSHGATEWAY_CLUSTER}"
+
+    echo -e "$payload" | curl -sS -X PUT --data-binary @- "$PG_PATH" || echo "[metrics] WARN push failed"
+    

@@ -1,0 +1,771 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "oblivion-sentinel.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "oblivion-sentinel.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  reaper.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # =======================
+    # Config from environment
+    # =======================
+    INCLUDE_NS_LIST="${INCLUDE_NS_LIST:-}"
+    INCLUDE_NS_REGEX="${INCLUDE_NS_REGEX:-}"
+
+    EXCLUDE_NS_REGEX="${EXCLUDE_NS_REGEX:-^(kube-|kube-system$|kube-public$|kube-node-lease$)}"
+    EXCLUDE_NS_LIST="${EXCLUDE_NS_LIST:-}"
+    EXCLUDE_RELEASE_REGEX="${EXCLUDE_RELEASE_REGEX:-^$}"
+
+    OPT_OUT_KEY="${OPT_OUT_KEY:-oblivion/ignore}"
+    TTL_OVERRIDE_ANNOTATION_KEY="${TTL_OVERRIDE_ANNOTATION_KEY:-oblivion/ttl-days}"
+
+    POD_TTL_DAYS="${POD_TTL_DAYS:-3}"
+    DELETE_PODS_ON_PHASE1="${DELETE_PODS_ON_PHASE1:-true}"
+    DELETE_PODS_FORCE="${DELETE_PODS_FORCE:-true}"
+    MAX_PODS_DELETE_PER_RUN="${MAX_PODS_DELETE_PER_RUN:-500}"
+
+    HELM_TTL_DAYS="${HELM_TTL_DAYS:-6}"
+    ERROR_RATIO_THRESHOLD="${ERROR_RATIO_THRESHOLD:-60}"
+    MAX_RELEASES_PER_RUN="${MAX_RELEASES_PER_RUN:-50}"
+
+    MIN_RESTARTS="${MIN_RESTARTS:-0}"
+    ERROR_REASONS="${ERROR_REASONS:-CrashLoopBackOff,ImagePullBackOff,ErrImagePull,CreateContainerConfigError,CreateContainerError,RunContainerError,ContainerCannotRun,InvalidImageName}"
+
+    # Sticky mode (store timers)
+    STICKY_MODE="${STICKY_MODE:-true}"
+    BAD_SINCE_ANNOTATION_KEY="${BAD_SINCE_ANNOTATION_KEY:-oblivion/bad-since}"
+    BACKFILL_NOTREADY="${BACKFILL_NOTREADY:-true}"
+
+    # Healthy-N-runs clear (with stability window)
+    HEALTHY_CLEAR_AFTER_RUNS="${HEALTHY_CLEAR_AFTER_RUNS:-3}"     # 0 = disable N-runs
+    HEALTHY_RUNS_ANNOTATION_KEY="${HEALTHY_RUNS_ANNOTATION_KEY:-oblivion/healthy-runs}"
+    RESET_BAD_SINCE_WHEN_HEALTHY="${RESET_BAD_SINCE_WHEN_HEALTHY:-false}"  # used only when HEALTHY_CLEAR_AFTER_RUNS=0
+    HEALTHY_STABLE_MINUTES="${HEALTHY_STABLE_MINUTES:-30}"
+
+    # TTL enforcement (apply/replace when job runs)
+    TTL_ENFORCE_MODE="${TTL_ENFORCE_MODE:-ignore}"   # ignore | clear_zero | clear_all | set
+    TTL_ENFORCE_VALUE="${TTL_ENFORCE_VALUE:-}"       # used only when MODE=set (e.g. "3")
+    APPLY_TO_PODS_TOO="${APPLY_TO_PODS_TOO:-true}"
+    RECONCILER_DRY_RUN="${RECONCILER_DRY_RUN:-false}"
+
+    DRY_RUN="${DRY_RUN:-true}"
+    HELM_TIMEOUT="${HELM_TIMEOUT:-5m}"
+    HELM_WAIT="${HELM_WAIT:-true}"
+    HELM_DEBUG="${HELM_DEBUG:-false}"
+
+    IFS=',' read -r -a ERROR_REASON_ARR <<< "$ERROR_REASONS"
+    IFS=',' read -r -a EXCLUDE_NS_ARR <<< "$EXCLUDE_NS_LIST"
+    IFS=',' read -r -a INCLUDE_NS_ARR <<< "$INCLUDE_NS_LIST"
+
+    now_epoch="$(date +%s)"
+    stable_sec=$(( 60 * 10#$HEALTHY_STABLE_MINUTES ))
+
+    # =========
+    # Helpers
+    # =========
+    need_cmd() {
+      local bin="$1"
+      if ! command -v "$bin" >/dev/null 2>&1; then
+        echo "[oblivion-sentinel] FATAL: required binary '$bin' not found on PATH"
+        exit 127
+      fi
+    }
+
+    ensure_gnu_date() {
+      # If 'date -d' is unavailable (BusyBox), try to install coreutils on Alpine
+      if date -u -d "1970-01-01T00:00:00Z" +%s >/dev/null 2>&1; then
+        return 0
+      fi
+      if command -v apk >/dev/null 2>&1; then
+        echo "[oblivion-sentinel] installing coreutils for GNU date..."
+        apk add --no-cache coreutils tzdata >/dev/null 2>&1 || true
+      fi
+    }
+
+    iso_to_epoch() {
+      # Parse ISO-8601 like 2025-10-03T07:33:12Z (or XXX+00:00) to epoch seconds using GNU date
+      local iso="$1"
+      [[ -z "$iso" ]] && { echo 0; return; }
+      # Try Z form
+      if out="$(date -u -d "$iso" +%s 2>/dev/null)"; then
+        echo "$out"; return
+      fi
+      # Try replacing Z with +00:00
+      local alt="${iso/Z/+00:00}"
+      if out="$(date -u -d "$alt" +%s 2>/dev/null)"; then
+        echo "$out"; return
+      fi
+      # As a last resort, try BusyBox date -D (if available)
+      if out="$(date -u -D "%Y-%m-%dT%H:%M:%SZ" "$iso" +%s 2>/dev/null)"; then
+        echo "$out"; return
+      fi
+      echo 0
+    }
+
+    preflight() {
+      need_cmd kubectl
+      need_cmd jq
+      ensure_gnu_date
+      if [[ "$DRY_RUN" != "true" ]]; then
+        if ! command -v helm >/dev/null 2>&1; then
+          echo "[oblivion-sentinel] WARN: 'helm' not found; phase2 uninstall may fail if triggered"
+        fi
+      fi
+    }
+
+    ns_is_included() {
+      local ns="$1" include_ok=1
+      if [[ -n "$INCLUDE_NS_REGEX" ]] && [[ "$ns" =~ $INCLUDE_NS_REGEX ]]; then include_ok=0; fi
+      for x in "${INCLUDE_NS_ARR[@]}"; do [[ -n "$x" && "$ns" == "$x" ]] && include_ok=0; done
+      if [[ -n "$INCLUDE_NS_REGEX" || -n "$INCLUDE_NS_LIST" ]]; then return $include_ok; fi
+      return 0
+    }
+
+    ns_is_excluded() {
+      local ns="$1"
+      [[ "$ns" =~ $EXCLUDE_NS_REGEX ]] && return 0
+      for x in "${EXCLUDE_NS_ARR[@]}"; do [[ -n "$x" && "$ns" == "$x" ]] && return 0; done
+      return 1
+    }
+
+    has_error_reason() {
+      local reasons="${1:-}"; local rs=()
+      IFS=';' read -r -a rs <<< "$reasons" || true
+      for r in "${rs[@]}"; do
+        for er in "${ERROR_REASON_ARR[@]}"; do
+          [[ "$r" == "$er" ]] && return 0
+        done
+      done
+      return 1
+    }
+
+    kind_to_res() {
+      case "$1" in
+        Deployment) echo "deployment" ;;
+        StatefulSet) echo "statefulset" ;;
+        DaemonSet)  echo "daemonset"  ;;
+        ReplicaSet) echo "replicaset" ;;
+        Job)        echo "job"        ;;
+        CronJob)    echo "cronjob"    ;;
+        Pod)        echo "pod"        ;;
+        *) echo "$1" | tr 'A-Z' 'a-z' ;;
+      esac
+    }
+
+    # Format seconds into "XdYhZm" or "XhYm" if days=0
+    fmt_dhm() {
+      local sec="${1:-0}"
+      if (( sec < 0 )); then sec=0; fi
+      local d=$(( sec / 86400 ))
+      local h=$(( (sec % 86400) / 3600 ))
+      local m=$(( (sec % 3600) / 60 ))
+      if (( d > 0 )); then
+        printf "%dd%dh%dm" "$d" "$h" "$m"
+      else
+        printf "%dh%dm" "$h" "$m"
+      fi
+    }
+
+    get_top_controller() {
+      local ns="$1" pod="$2"
+      local kind name
+      kind="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.ownerReferences[?(@.controller==true)].kind}' 2>/dev/null || true)"
+      name="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.ownerReferences[?(@.controller==true)].name}' 2>/dev/null || true)"
+      if [[ -z "$kind" || -z "$name" ]]; then echo "pod $pod"; return 0; fi
+
+      if [[ "$kind" == "ReplicaSet" ]]; then
+        local dKind dName
+        dKind="$(kubectl -n "$ns" get rs "$name" -o jsonpath='{.metadata.ownerReferences[?(@.controller==true)].kind}' 2>/dev/null || true)"
+        dName="$(kubectl -n "$ns" get rs "$name" -o jsonpath='{.metadata.ownerReferences[?(@.controller==true)].name}' 2>/dev/null || true)"
+        if [[ -n "$dKind" && -n "$dName" ]]; then echo "$(kind_to_res "$dKind") $dName"; return 0; fi
+      fi
+
+      if [[ "$kind" == "Job" ]]; then
+        local cKind cName
+        cKind="$(kubectl -n "$ns" get job "$name" -o jsonpath='{.metadata.ownerReferences[?(@.controller==true)].kind}' 2>/dev/null || true)"
+        cName="$(kubectl -n "$ns" get job "$name" -o jsonpath='{.metadata.ownerReferences[?(@.controller==true)].name}' 2>/dev/null || true)"
+        if [[ -n "$cKind" && -n "$cName" ]]; then echo "$(kind_to_res "$cKind") $cName"; return 0; fi
+      fi
+
+      echo "$(kind_to_res "$kind") $name"
+    }
+
+    # Return "<release>|<isHelm(0/1)>"
+    detect_release_for_pod() {
+      local ns="$1" pod="$2"
+      local rel isHelm mb hg chart hasHelmKey
+
+      rel="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/instance}' 2>/dev/null || true)"
+      [[ -n "$rel" ]] || rel="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)"
+
+      mb="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null || true)"
+      hg="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.labels.heritage}' 2>/dev/null || true)"
+      chart="$(kubectl -n "$ns" get pod "$pod" -o jsonpath='{.metadata.labels.helm\.sh/chart}' 2>/dev/null || true)"
+      hasHelmKey="$(kubectl -n "$ns" get pod "$pod" -o json | jq -r '
+        ((.metadata.labels // {} | to_entries | map(.key)) + (.metadata.annotations // {} | to_entries | map(.key)))
+        | map(test("(?i)helm(\\.sh)?")) | any
+      ' 2>/dev/null || echo "false")"
+
+      isHelm=0
+      if [[ -n "$rel" || -n "$chart" || "$mb" =~ [Hh]elm || "$hg" =~ [Hh]elm || "$hasHelmKey" == "true" ]]; then
+        isHelm=1
+      fi
+
+      if [[ "$isHelm" -eq 0 || -z "$rel" ]]; then
+        local res name
+        read -r res name <<<"$(get_top_controller "$ns" "$pod")"
+        if [[ -n "$res" && -n "$name" ]]; then
+          local rel2 mb2 hg2 chart2 hasHelmKey2
+          rel2="$(kubectl -n "$ns" get "$res" "$name" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)"
+          [[ -n "$rel2" ]] || rel2="$(kubectl -n "$ns" get "$res" "$name" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/instance}' 2>/dev/null || true)"
+          mb2="$(kubectl -n "$ns" get "$res" "$name" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null || true)"
+          hg2="$(kubectl -n "$ns" get "$res" "$name" -o jsonpath='{.metadata.labels.heritage}' 2>/dev/null || true)"
+          chart2="$(kubectl -n "$ns" get "$res" "$name" -o jsonpath='{.metadata.labels.helm\.sh/chart}' 2>/dev/null || true)"
+          hasHelmKey2="$(kubectl -n "$ns" get "$res" "$name" -o json | jq -r '
+            ((.metadata.labels // {} | to_entries | map(.key)) + (.metadata.annotations // {} | to_entries | map(.key)))
+            | map(test("(?i)helm(\\.sh)?")) | any
+          ' 2>/dev/null || echo "false")"
+          [[ -z "$rel" && -n "$rel2" ]] && rel="$rel2"
+          if [[ "$isHelm" -eq 0 && ( -n "$rel2" || -n "$chart2" || "$mb2" =~ [Hh]elm || "$hg2" =~ [Hh]elm || "$hasHelmKey2" == "true" ) ]]; then
+            isHelm=1
+          fi
+        fi
+      fi
+
+      echo "${rel}|${isHelm}"
+    }
+
+    # ---------- State I/O on Helm Secret ----------
+    get_release_secret() {
+      local ns="$1" rel="$2"
+      kubectl -n "$ns" get secret -l "owner=helm,name=${rel}" -o json 2>/dev/null \
+        | jq -r '.items | sort_by(.metadata.creationTimestamp) | last | .metadata.name // ""'
+    }
+
+    get_secret_annot_epoch() {
+      local ns="$1" secretName="$2" key="$3"
+      local iso
+      iso="$(kubectl -n "$ns" get secret "$secretName" -o json 2>/dev/null \
+            | jq -r --arg k "$key" '.metadata.annotations[$k] // ""')"
+      iso_to_epoch "$iso"
+    }
+
+    set_annotation_secret() {
+      local ns="$1" name="$2" key="$3" val="$4"
+      kubectl -n "$ns" annotate secret "$name" "$key=$val" --overwrite >/dev/null 2>&1 || true
+    }
+    clear_annotation_secret() {
+      local ns="$1" name="$2" key="$3"
+      kubectl -n "$ns" annotate secret "$name" "$key-" >/dev/null 2>&1 || true
+    }
+
+    # ---------- State I/O on non-Helm controller ----------
+    get_ctrl_annot_epoch() {
+      local ns="$1" res="$2" name="$3" key="$4"
+      local iso
+      iso="$(kubectl -n "$ns" get "$res" "$name" -o json 2>/dev/null \
+            | jq -r --arg k "$key" '.metadata.annotations[$k] // ""')"
+      iso_to_epoch "$iso"
+    }
+    set_annotation_ctrl() {
+      local ns="$1" res="$2" name="$3" key="$4" val="$5"
+      kubectl -n "$ns" annotate "$res" "$name" "$key=$val" --overwrite >/dev/null 2>&1 || true
+    }
+    clear_annotation_ctrl() {
+      local ns="$1" res="$2" name="$3" key="$4"
+      kubectl -n "$ns" annotate "$res" "$name" "$key-" >/dev/null 2>&1 || true
+    }
+
+    # ===============
+    # TTL enforcement
+    # ===============
+    enforce_ttl_on_pods() {
+      local mode="$1" val="$2"
+      [[ "$mode" == "ignore" ]] && return 0
+
+      echo "[oblivion-sentinel] TTL enforce mode=${mode} value='${val}' apply_to_pods=${APPLY_TO_PODS_TOO} recDryRun=${RECONCILER_DRY_RUN}"
+      [[ "${APPLY_TO_PODS_TOO}" != "true" ]] && return 0
+
+      local PJSON
+      PJSON="$(kubectl get pods --all-namespaces -o json)"
+      mapfile -t ALLPODS < <(
+        echo "$PJSON" \
+        | jq -r --arg ttlKey "$TTL_OVERRIDE_ANNOTATION_KEY" '
+            .items[]
+            | select(.metadata.deletionTimestamp==null)
+            | "\(.metadata.namespace)\t\(.metadata.name)\t\(.metadata.annotations[$ttlKey] // "")"
+          '
+      )
+
+      for line in "${ALLPODS[@]}"; do
+        IFS=$'\t' read -r ns name cur <<<"$line"
+        ns_is_included "$ns" || continue
+        ns_is_excluded "$ns" && continue
+
+        case "$mode" in
+          clear_zero)
+            if [[ "$cur" == "0" ]]; then
+              echo "[oblivion-sentinel] TTL clear_zero on pod ${ns}/${name}"
+              [[ "${RECONCILER_DRY_RUN}" == "true" ]] || kubectl -n "$ns" annotate pod "$name" "$TTL_OVERRIDE_ANNOTATION_KEY-" >/dev/null 2>&1 || true
+            fi
+            ;;
+          clear_all)
+            if [[ -n "$cur" ]]; then
+              echo "[oblivion-sentinel] TTL clear_all on pod ${ns}/${name}"
+              [[ "${RECONCILER_DRY_RUN}" == "true" ]] || kubectl -n "$ns" annotate pod "$name" "$TTL_OVERRIDE_ANNOTATION_KEY-" >/dev/null 2>&1 || true
+            fi
+            ;;
+          set)
+            if [[ "$val" =~ ^[0-9]+$ && 10#$val -ge 1 ]]; then
+              if [[ "$cur" != "$val" ]]; then
+                echo "[oblivion-sentinel] TTL set=${val} on pod ${ns}/${name}"
+                [[ "${RECONCILER_DRY_RUN}" == "true" ]] || kubectl -n "$ns" annotate pod "$name" "$TTL_OVERRIDE_ANNOTATION_KEY=$val" --overwrite >/dev/null 2>&1 || true
+              fi
+            else
+              echo "[oblivion-sentinel] WARN TTL_ENFORCE_VALUE invalid: '${val}' (skip)"
+            fi
+            ;;
+        esac
+      done
+    }
+
+    # ===========
+    # Start Scan
+    # ===========
+    preflight
+    # Step 0: enforce TTL on pods (so this run sees updated TTLs)
+    enforce_ttl_on_pods "$TTL_ENFORCE_MODE" "$TTL_ENFORCE_VALUE"
+
+    pods_scanned=0
+    pods_deleted_total=0
+    phase2_candidates_total=0
+    releases_uninstalled_total=0
+    declare -A ns_pods_deleted=()
+
+    echo "[oblivion-sentinel] sticky-mode=${STICKY_MODE} podTTL=${POD_TTL_DAYS}d helmTTL=${HELM_TTL_DAYS}d threshold=${ERROR_RATIO_THRESHOLD}% dry_run=${DRY_RUN}"
+
+    PODS_JSON="$(kubectl get pods --all-namespaces -o json)"
+
+    # TSV columns:
+    # ns | name | notReadyFlag | reasons | maxRestart | annOpt | labOpt | ttlOverride | notReadyEpoch | creationEpoch | readyTrueEpoch
+    mapfile -t POD_LINES < <(echo "$PODS_JSON" | jq -r --arg optKey "$OPT_OUT_KEY" --arg ttlKey "$TTL_OVERRIDE_ANNOTATION_KEY" '
+      .items[]
+      | select(.metadata.deletionTimestamp == null) as $p
+      | ($p.status.conditions // [] | map(select(.type=="Ready" and .status!="True")) | length) as $notReadyCount
+      | [
+          $p.metadata.namespace,
+          $p.metadata.name,
+          (if $notReadyCount > 0 then "1" else "0" end),
+          ( ($p.status.containerStatuses // []) | map(select(.state.waiting != null) | .state.waiting.reason) | join(";") ),
+          ( ($p.status.containerStatuses // []) | map(.restartCount // 0) | max // 0 ),
+          ( ($p.metadata.annotations[$optKey] // "") | ascii_downcase ),
+          ( ($p.metadata.labels[$optKey] // "") | ascii_downcase ),
+          ( $p.metadata.annotations[$ttlKey] // "" ),
+          (
+            ($p.status.conditions // [])
+            | map(select(.type=="Ready" and .status!="True") | .lastTransitionTime)
+            | sort | last
+            | (fromdateiso8601? // (try (strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) catch 0))
+          ) // 0,
+          ( ($p.metadata.creationTimestamp // "")
+            | (fromdateiso8601? // (try (strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) catch 0))
+          ) // 0,
+          (
+            ($p.status.conditions // [])
+            | map(select(.type=="Ready" and .status=="True") | .lastTransitionTime)
+            | sort | last
+            | (fromdateiso8601? // (try (strptime("%Y-%m-%dT%H:%M:%SZ") | mktime) catch 0))
+          ) // 0
+        ] | @tsv
+    ')
+
+    # Accumulators (Helm)
+    declare -A totalPodsHelm=()
+    declare -A errorNowHelm=()
+    declare -A errorPodsListHelm=()
+    declare -A anyOptOutHelm=()
+    declare -A nsOfHelm=()
+    declare -A minTTLHelm=()
+    declare -A minReadyAgeSecHelm=()
+    declare -A minProblemEpochHelm=()   # for backfill
+
+    # Accumulators (non-Helm grouped by controller)
+    declare -A totalPodsNH=()
+    declare -A errorNowNH=()
+    declare -A errorPodsListNH=()
+    declare -A anyOptOutNH=()
+    declare -A nsOfNH=()
+    declare -A resOfNH=()
+    declare -A nameOfNH=()
+    declare -A minTTLNH=()
+    declare -A minReadyAgeSecNH=()
+    declare -A minProblemEpochNH=()     # for backfill
+
+    for line in "${POD_LINES[@]}"; do
+      IFS=$'\t' read -r ns name notReadyFlag reasons maxRestart annOpt labOpt ttlOverride notReadyEpoch creationEpoch readyTrueEpoch <<< "$line"
+      ((pods_scanned++)) || true
+
+      ns_is_included "$ns" || continue
+      ns_is_excluded "$ns" && continue
+
+      # classify error NOW
+      isError=0
+      [[ "$notReadyFlag" == "1" ]] && isError=1
+      if [[ -n "$reasons" ]] && has_error_reason "$reasons"; then isError=1; fi
+      if (( 10#$MIN_RESTARTS > 0 )) && (( 10#$maxRestart >= 10#$MIN_RESTARTS )); then isError=1; fi
+
+      # ready age (seconds)
+      readyAgeSec=0
+      if [[ -n "${readyTrueEpoch:-}" && "$readyTrueEpoch" != "0" ]]; then
+        readyAgeSec=$(( now_epoch - readyTrueEpoch ))
+        (( readyAgeSec < 0 )) && readyAgeSec=0
+      fi
+
+      # Detect Helm release
+      rel_and_flag="$(detect_release_for_pod "$ns" "$name")"
+      release="${rel_and_flag%%|*}"
+      isHelm="${rel_and_flag##*|}"
+
+      # TTL override per Pod: accept ONLY integers >= 1 (ignore 0)
+      ttlOverrideNum=""
+      if [[ -n "$ttlOverride" && "$ttlOverride" =~ ^[0-9]+$ && 10#$ttlOverride -ge 1 ]]; then
+        ttlOverrideNum="$ttlOverride"
+      fi
+
+      # pick a "problem epoch" when pod first became not-Ready (fallback: creation)
+      problemEpoch="$notReadyEpoch"
+      [[ "$problemEpoch" == "0" || -z "$problemEpoch" ]] && problemEpoch="$creationEpoch"
+
+      if [[ "$isHelm" == "1" && -n "$release" ]]; then
+        [[ -n "$EXCLUDE_RELEASE_REGEX" && "$release" =~ $EXCLUDE_RELEASE_REGEX ]] && continue
+        key="${ns}__${release}"
+        nsOfHelm["$key"]="$ns"
+        (( totalPodsHelm["$key"] += 1 ))
+
+        # min TTL among pods (only if ttlOverrideNum set and >=1)
+        if [[ -n "$ttlOverrideNum" ]]; then
+          if [[ -z "${minTTLHelm[$key]:-}" || 10#$ttlOverrideNum -lt 10#${minTTLHelm[$key]} ]]; then
+            minTTLHelm["$key"]="$ttlOverrideNum"
+          fi
+        fi
+
+        # min Ready age (seconds) in the group
+        if [[ -z "${minReadyAgeSecHelm[$key]:-}" || 10#$readyAgeSec -lt 10#${minReadyAgeSecHelm[$key]} ]]; then
+          minReadyAgeSecHelm["$key"]="$readyAgeSec"
+        fi
+
+        # opt-out
+        if [[ "$annOpt" == "true" || "$labOpt" == "true" ]]; then
+          anyOptOutHelm["$key"]="true"
+        fi
+
+        if (( isError == 1 )); then
+          (( errorNowHelm["$key"] += 1 ))
+          if [[ -z "${errorPodsListHelm[$key]:-}" ]]; then
+            errorPodsListHelm["$key"]="${ns}/${name}"
+          else
+            errorPodsListHelm["$key"]="${errorPodsListHelm[$key]};${ns}/${name}"
+          fi
+          # record earliest problem epoch for backfill
+          if [[ -n "$problemEpoch" && "$problemEpoch" != "0" ]]; then
+            if [[ -z "${minProblemEpochHelm[$key]:-}" || 10#$problemEpoch -lt 10#${minProblemEpochHelm[$key]} ]]; then
+              minProblemEpochHelm["$key"]="$problemEpoch"
+            fi
+          fi
+        fi
+
+      else
+        # Non-Helm: group by controller (or pod if bare)
+        read -r res ctlName <<<"$(get_top_controller "$ns" "$name")"
+        if [[ -z "$res" || -z "$ctlName" ]]; then res="pod"; ctlName="$name"; fi
+        key="${ns}__${res}__${ctlName}"
+        nsOfNH["$key"]="$ns"
+        resOfNH["$key"]="$res"
+        nameOfNH["$key"]="$ctlName"
+        (( totalPodsNH["$key"] += 1 ))
+
+        if [[ -n "$ttlOverrideNum" ]]; then
+          if [[ -z "${minTTLNH[$key]:-}" || 10#$ttlOverrideNum -lt 10#${minTTLNH[$key]} ]]; then
+            minTTLNH["$key"]="$ttlOverrideNum"
+          fi
+        fi
+        if [[ -z "${minReadyAgeSecNH[$key]:-}" || 10#$readyAgeSec -lt 10#${minReadyAgeSecNH[$key]} ]]; then
+          minReadyAgeSecNH["$key"]="$readyAgeSec"
+        fi
+        if [[ "$annOpt" == "true" || "$labOpt" == "true" ]]; then
+          anyOptOutNH["$key"]="true"
+        fi
+        if (( isError == 1 )); then
+          (( errorNowNH["$key"] += 1 ))
+          if [[ -z "${errorPodsListNH[$key]:-}" ]]; then
+            errorPodsListNH["$key"]="${ns}/${name}"
+          else
+            errorPodsListNH["$key"]="${errorPodsListNH[$key]};${ns}/${name}"
+          fi
+          if [[ -n "$problemEpoch" && "$problemEpoch" != "0" ]]; then
+            if [[ -z "${minProblemEpochNH[$key]:-}" || 10#$problemEpoch -lt 10#${minProblemEpochNH[$key]} ]]; then
+              minProblemEpochNH["$key"]="$problemEpoch"
+            fi
+          fi
+        fi
+      fi
+    done
+
+    echo "[oblivion-sentinel] pods-seen=${pods_scanned} helm-releases-seen=${#totalPodsHelm[@]}"
+
+    # ==========================
+    # Decisions per Helm release
+    # ==========================
+    declare -A releaseOK_Phase1=()
+    candidates=()
+
+    for key in "${!totalPodsHelm[@]}"; do
+      ns="${nsOfHelm[$key]}"; rel="${key#*__}"
+      tot="${totalPodsHelm[$key]}"; errNow="${errorNowHelm[$key]:-0}"
+
+      if [[ "${anyOptOutHelm[$key]:-}" == "true" ]]; then
+        echo "[oblivion-sentinel] skip ${ns}/${rel}: opt-out present"
+        continue
+      fi
+
+      ratioNow=0
+      (( 10#$tot > 0 )) && ratioNow=$(( 100 * errNow / tot ))
+
+      ttlPodRel="${POD_TTL_DAYS}"
+      ttlHelmRel="${HELM_TTL_DAYS}"
+      if [[ -n "${minTTLHelm[$key]:-}" ]]; then
+        ttlPodRel="${minTTLHelm[$key]}"
+        ttlHelmRel="${minTTLHelm[$key]}"
+      fi
+
+      # sticky age (sec/days + fmt)
+      stickyAgeSec=0
+      stickyAgeDays=0
+      stickyAgeFmt="$(fmt_dhm 0)"
+      minReadyAgeSec="${minReadyAgeSecHelm[$key]:-0}"
+
+      if [[ "$STICKY_MODE" == "true" ]]; then
+        relSecret="$(get_release_secret "$ns" "$rel")"
+        if [[ -n "$relSecret" ]]; then
+          badSinceEpoch="$(get_secret_annot_epoch "$ns" "$relSecret" "$BAD_SINCE_ANNOTATION_KEY")"
+          healthyRunsRaw="$(kubectl -n "$ns" get secret "$relSecret" -o jsonpath="{.metadata.annotations['$HEALTHY_RUNS_ANNOTATION_KEY']}" 2>/dev/null || true)"
+          if [[ "$healthyRunsRaw" =~ ^[0-9]+$ ]]; then healthyRuns="$healthyRunsRaw"; else healthyRuns="0"; fi
+
+          if (( badSinceEpoch > 0 )); then
+            stickyAgeSec=$(( now_epoch - badSinceEpoch ))
+            (( stickyAgeSec < 0 )) && stickyAgeSec=0
+            stickyAgeDays=$(( stickyAgeSec / 86400 ))
+            stickyAgeFmt="$(fmt_dhm "$stickyAgeSec")"
+          fi
+
+          if (( errNow > 0 )); then
+            if (( badSinceEpoch == 0 )); then
+              if [[ "${BACKFILL_NOTREADY}" == "true" && -n "${minProblemEpochHelm[$key]:-}" && "${minProblemEpochHelm[$key]}" != "0" ]]; then
+                backfillIso="$(date -u -d "@${minProblemEpochHelm[$key]}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+                echo "[oblivion-sentinel] sticky: backfill ${ns}/${rel} = ${backfillIso}"
+                set_annotation_secret "$ns" "$relSecret" "$BAD_SINCE_ANNOTATION_KEY" "$backfillIso"
+              else
+                badSinceIso="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                echo "[oblivion-sentinel] sticky: mark ${ns}/${rel} = ${badSinceIso}"
+                set_annotation_secret "$ns" "$relSecret" "$BAD_SINCE_ANNOTATION_KEY" "$badSinceIso"
+              fi
+              stickyAgeSec=0; stickyAgeDays=0; stickyAgeFmt="$(fmt_dhm 0)"
+            fi
+            kubectl -n "$ns" annotate secret "$relSecret" "$HEALTHY_RUNS_ANNOTATION_KEY=0" --overwrite >/dev/null 2>&1 || true
+
+          else
+            if (( 10#$minReadyAgeSec >= 10#$stable_sec )); then
+              if (( 10#$HEALTHY_CLEAR_AFTER_RUNS > 0 )); then
+                [[ "$healthyRuns" =~ ^[0-9]+$ ]] || healthyRuns="0"
+                (( healthyRuns = 10#$healthyRuns + 1 ))
+                kubectl -n "$ns" annotate secret "$relSecret" "$HEALTHY_RUNS_ANNOTATION_KEY=$healthyRuns" --overwrite >/dev/null 2>&1 || true
+                if (( 10#$healthyRuns >= 10#$HEALTHY_CLEAR_AFTER_RUNS )) && (( badSinceEpoch > 0 )); then
+                  echo "[oblivion-sentinel] sticky: clear ${ns}/${rel} after ${healthyRuns} stable healthy runs (>=${HEALTHY_STABLE_MINUTES}m)"
+                  clear_annotation_secret "$ns" "$relSecret" "$BAD_SINCE_ANNOTATION_KEY"
+                  kubectl -n "$ns" annotate secret "$relSecret" "$HEALTHY_RUNS_ANNOTATION_KEY-" >/dev/null 2>&1 || true
+                  stickyAgeSec=0; stickyAgeDays=0; stickyAgeFmt="$(fmt_dhm 0)"
+                fi
+              else
+                if (( badSinceEpoch > 0 )) && [[ "$RESET_BAD_SINCE_WHEN_HEALTHY" == "true" ]]; then
+                  echo "[oblivion-sentinel] sticky: clear ${ns}/${rel} (stable >=${HEALTHY_STABLE_MINUTES}m)"
+                  clear_annotation_secret "$ns" "$relSecret" "$BAD_SINCE_ANNOTATION_KEY"
+                  stickyAgeSec=0; stickyAgeDays=0; stickyAgeFmt="$(fmt_dhm 0)"
+                fi
+              fi
+            else
+              echo "[oblivion-sentinel] healthy but NOT stable yet (${minReadyAgeSec}s < ${stable_sec}s) for ${ns}/${rel} – keep sticky"
+            fi
+          fi
+        fi
+      fi
+
+      echo "[oblivion-sentinel] sticky check ${ns}/${rel}: total=${tot} errNow=${errNow} ratioNow=${ratioNow}% stickyAge=${stickyAgeDays}d (${stickyAgeFmt}) ttlPod=${ttlPodRel}d ttlHelm=${ttlHelmRel}d (minReadyAgeSec=${minReadyAgeSec})"
+
+      if (( 10#$stickyAgeDays >= 10#$ttlPodRel )); then
+        releaseOK_Phase1["$key"]="1"
+      fi
+      if (( 10#$stickyAgeDays >= 10#$ttlHelmRel )) && (( 10#$ratioNow >= 10#$ERROR_RATIO_THRESHOLD )); then
+        candidates+=( "${ns}/${rel}" )
+        ((phase2_candidates_total++)) || true
+      fi
+    done
+
+    # ==========================
+    # Decisions per non-Helm controller
+    # ==========================
+    declare -A releaseOK_Phase1_NH=()
+
+    for key in "${!totalPodsNH[@]}"; do
+      ns="${nsOfNH[$key]}"; res="${resOfNH[$key]}"; ctl="${nameOfNH[$key]}"
+      tot="${totalPodsNH[$key]}"; errNow="${errorNowNH[$key]:-0}"
+
+      if [[ "${anyOptOutNH[$key]:-}" == "true" ]]; then
+        echo "[oblivion-sentinel] skip ${ns}/${res}/${ctl}: opt-out present"
+        continue
+      fi
+
+      ratioNow=0
+      (( 10#$tot > 0 )) && ratioNow=$(( 100 * errNow / tot ))
+      ttlPodRel="${POD_TTL_DAYS}"
+      [[ -n "${minTTLNH[$key]:-}" ]] && ttlPodRel="${minTTLNH[$key]}"
+
+      # sticky age (sec/days + fmt)
+      stickyAgeSec=0
+      stickyAgeDays=0
+      stickyAgeFmt="$(fmt_dhm 0)"
+      minReadyAgeSec="${minReadyAgeSecNH[$key]:-0}"
+
+      if [[ "$STICKY_MODE" == "true" ]]; then
+        badSinceEpoch="$(get_ctrl_annot_epoch "$ns" "$res" "$ctl" "$BAD_SINCE_ANNOTATION_KEY")"
+        healthyRunsRaw="$(kubectl -n "$ns" get "$res" "$ctl" -o jsonpath="{.metadata.annotations['$HEALTHY_RUNS_ANNOTATION_KEY']}" 2>/dev/null || true)"
+        if [[ "$healthyRunsRaw" =~ ^[0-9]+$ ]]; then healthyRuns="$healthyRunsRaw"; else healthyRuns="0"; fi
+
+        if (( badSinceEpoch > 0 )); then
+          stickyAgeSec=$(( now_epoch - badSinceEpoch ))
+          (( stickyAgeSec < 0 )) && stickyAgeSec=0
+          stickyAgeDays=$(( stickyAgeSec / 86400 ))
+          stickyAgeFmt="$(fmt_dhm "$stickyAgeSec")"
+        fi
+
+        if (( errNow > 0 )); then
+          if (( badSinceEpoch == 0 )); then
+            if [[ "${BACKFILL_NOTREADY}" == "true" && -n "${minProblemEpochNH[$key]:-}" && "${minProblemEpochNH[$key]}" != "0" ]]; then
+              backfillIso="$(date -u -d "@${minProblemEpochNH[$key]}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo "[oblivion-sentinel] sticky: backfill ${ns}/${res}/${ctl} = ${backfillIso}"
+              set_annotation_ctrl "$ns" "$res" "$ctl" "$BAD_SINCE_ANNOTATION_KEY" "$backfillIso"
+            else
+              badSinceIso="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              echo "[oblivion-sentinel] sticky: mark ${ns}/${res}/${ctl} = ${badSinceIso}"
+              set_annotation_ctrl "$ns" "$res" "$ctl" "$BAD_SINCE_ANNOTATION_KEY" "$badSinceIso"
+            fi
+            stickyAgeSec=0; stickyAgeDays=0; stickyAgeFmt="$(fmt_dhm 0)"
+          fi
+          set_annotation_ctrl "$ns" "$res" "$ctl" "$HEALTHY_RUNS_ANNOTATION_KEY" "0"
+
+        else
+          if (( 10#$minReadyAgeSec >= 10#$stable_sec )); then
+            if (( 10#$HEALTHY_CLEAR_AFTER_RUNS > 0 )); then
+              [[ "$healthyRuns" =~ ^[0-9]+$ ]] || healthyRuns="0"
+              (( healthyRuns = 10#$healthyRuns + 1 ))
+              set_annotation_ctrl "$ns" "$res" "$ctl" "$HEALTHY_RUNS_ANNOTATION_KEY" "$healthyRuns"
+              if (( 10#$healthyRuns >= 10#$HEALTHY_CLEAR_AFTER_RUNS )) && (( badSinceEpoch > 0 )); then
+                echo "[oblivion-sentinel] sticky: clear ${ns}/${res}/${ctl} after ${healthyRuns} stable healthy runs (>=${HEALTHY_STABLE_MINUTES}m)"
+                clear_annotation_ctrl "$ns" "$res" "$ctl" "$BAD_SINCE_ANNOTATION_KEY"
+                kubectl -n "$ns" annotate "$res" "$ctl" "$HEALTHY_RUNS_ANNOTATION_KEY-" >/dev/null 2>&1 || true
+                stickyAgeSec=0; stickyAgeDays=0; stickyAgeFmt="$(fmt_dhm 0)"
+              fi
+            else
+              if (( badSinceEpoch > 0 )) && [[ "$RESET_BAD_SINCE_WHEN_HEALTHY" == "true" ]]; then
+                echo "[oblivion-sentinel] sticky: clear ${ns}/${res}/${ctl} (stable >=${HEALTHY_STABLE_MINUTES}m)"
+                clear_annotation_ctrl "$ns" "$res" "$ctl" "$BAD_SINCE_ANNOTATION_KEY"
+                stickyAgeSec=0; stickyAgeDays=0; stickyAgeFmt="$(fmt_dhm 0)"
+              fi
+            fi
+          else
+            echo "[oblivion-sentinel] healthy but NOT stable yet (${minReadyAgeSec}s < ${stable_sec}s) for ${ns}/${res}/${ctl} – keep sticky"
+          fi
+        fi
+      fi
+
+      echo "[oblivion-sentinel] sticky check ${ns}/${res}/${ctl}: total=${tot} errNow=${errNow} ratioNow=${ratioNow}% stickyAge=${stickyAgeDays}d (${stickyAgeFmt}) ttlPod=${ttlPodRel}d (minReadyAgeSec=${minReadyAgeSec})"
+
+      if (( 10#$stickyAgeDays >= 10#$ttlPodRel )); then
+        releaseOK_Phase1_NH["$key"]="1"
+      fi
+    done
+
+    # =================
+    # Phase 1: delete pods (Helm + non-Helm)
+    # =================
+    if [[ "${DELETE_PODS_ON_PHASE1}" == "true" ]]; then
+      # Helm groups
+      for key in "${!releaseOK_Phase1[@]}"; do
+        list="${errorPodsListHelm[$key]:-}"
+        [[ -z "$list" ]] && continue
+        IFS=';' read -r -a arr <<< "$list"
+        for id in "${arr[@]}"; do
+          (( pods_deleted_total >= MAX_PODS_DELETE_PER_RUN )) && break
+          ns="${id%/*}"; name="${id#*/}"
+          echo "[oblivion-sentinel] phase1 delete pod ${ns}/${name}"
+          if [[ "${DRY_RUN}" != "true" ]]; then
+            if [[ "${DELETE_PODS_FORCE}" == "true" ]]; then
+              kubectl delete pod "$name" -n "$ns" --grace-period=0 --force || true
+            else
+              kubectl delete pod "$name" -n "$ns" || true
+            fi
+          fi
+          ((ns_pods_deleted["$ns"]++)) || true
+          ((pods_deleted_total++)) || true
+        done
+      done
+
+      # Non-Helm groups
+      for key in "${!releaseOK_Phase1_NH[@]}"; do
+        list="${errorPodsListNH[$key]:-}"
+        [[ -z "$list" ]] && continue
+        IFS=';' read -r -a arr <<< "$list"
+        for id in "${arr[@]}"; do
+          (( pods_deleted_total >= MAX_PODS_DELETE_PER_RUN )) && break
+          ns="${id%/*}"; name="${id#*/}"
+          echo "[oblivion-sentinel] phase1 delete pod (non-helm) ${ns}/${name}"
+          if [[ "${DRY_RUN}" != "true" ]]; then
+            if [[ "${DELETE_PODS_FORCE}" == "true" ]]; then
+              kubectl delete pod "$name" -n "$ns" --grace-period=0 --force || true
+            else
+              kubectl delete pod "$name" -n "$ns" || true
+            fi
+          fi
+          ((ns_pods_deleted["$ns"]++)) || true
+          ((pods_deleted_total++)) || true
+        done
+      done
+    fi
+
+    # =================
+    # Phase 2: helm uninstall (Helm only)
+    # =================
+    if (( ${#candidates[@]} > ${MAX_RELEASES_PER_RUN:-50} )); then
+      candidates=( "${candidates[@]:0:${MAX_RELEASES_PER_RUN:-50}}" )
+    fi
+
+    for id in "${candidates[@]}"; do
+      ns="${id%/*}"; rel="${id#*/}"
+      args=( uninstall "$rel" -n "$ns" --timeout "${HELM_TIMEOUT}" )
+      [[ "${HELM_WAIT}" == "true" ]] && args+=( --wait )
+      [[ "${HELM_DEBUG}" == "true" ]] && args+=( --debug )
+      echo "[oblivion-sentinel] phase2 helm ${args[*]}"
+      if [[ "${DRY_RUN}" != "true" ]]; then
+        if helm "${args[@]}"; then
+          ((releases_uninstalled_total++)) || true
+        else
+          echo "[oblivion-sentinel] WARN uninstall failed: ${ns}/${rel}"
+        fi
+      fi
+    done
+
+    echo "[oblivion-sentinel] phase1 pods_deleted=${pods_deleted_total} ; phase2 release_candidates=${#candidates[@]} ; releases_uninstalled=${releases_uninstalled_total}"
+    echo "[oblivion-sentinel] done"
