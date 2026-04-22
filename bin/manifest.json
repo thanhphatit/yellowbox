@@ -1,0 +1,32 @@
+{
+  "lastUpdated": "2026-04-22T16:42:31Z",
+  "tools": [
+    {
+      "name": "chat-ai",
+      "platforms": {
+        "darwin-arm64": [
+          "chat-ai"
+        ]
+      }
+    }
+    ,
+    {
+      "name": "cicd-manager",
+      "platforms": {
+        "linux-amd64": [
+          "config-controller"
+          ,
+          "docker-controller"
+          ,
+          "helm-controller"
+          ,
+          "k8s-controller"
+          ,
+          "release-controller"
+          ,
+          "terraform-controller"
+        ]
+      }
+    }
+  ]
+}
