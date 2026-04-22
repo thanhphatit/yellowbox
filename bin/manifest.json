@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-22T16:59:49Z",
+  "lastUpdated": "2026-04-22T17:12:13Z",
   "tools": [
     {
       "name": "chat-ai",
@@ -8,22 +8,16 @@
           "chat-ai"
         ]
       }
-    }
-    ,
+    },
     {
       "name": "cicd-manager",
       "platforms": {
         "linux-amd64": [
-          "config-controller"
-          ,
-          "docker-controller"
-          ,
-          "helm-controller"
-          ,
-          "k8s-controller"
-          ,
-          "release-controller"
-          ,
+          "config-controller",
+          "docker-controller",
+          "helm-controller",
+          "k8s-controller",
+          "release-controller",
           "terraform-controller"
         ]
       }
