@@ -3,7 +3,7 @@ entries:
   oblivion-sentinel:
   - apiVersion: v2
     appVersion: 0.0.6
-    created: "2026-04-22T16:11:27.983672433Z"
+    created: "2026-04-22T16:20:52.569562588Z"
     description: Scan Kubernetes pods by health/time and apply a two-phase remediation,
       delete bad pods first, uninstall Helm releases later if degradation persists.
     digest: 0d850f773bc5b18f31ca5b8efa6d6c00693219410a44d22a04182ec6dfd708f8
@@ -22,4 +22,27 @@ entries:
     urls:
     - https://yellowbox.itblognote.com/charts/oblivion-sentinel-0.0.10.tgz
     version: 0.0.10
-generated: "2026-04-22T16:11:27.982361788Z"
+  uptime-kuma:
+  - apiVersion: v2
+    appVersion: 1.23.17
+    created: "2026-04-22T16:20:52.575620228Z"
+    dependencies:
+    - condition: mariadb.enabled
+      name: mariadb
+      repository: https://charts.bitnami.com/bitnami
+      version: 23.2.2
+    description: A self-hosted Monitoring tool like "Uptime-Robot".
+    digest: b2c50ac96708d9c9d7f8cccf09eeffe75006a96f8a2d525d9a81b6045e2fa225
+    home: https://github.com/dirsigler/uptime-kuma-helm
+    icon: https://raw.githubusercontent.com/louislam/uptime-kuma/master/public/icon.png
+    maintainers:
+    - email: dennis@irsigler.dev
+      name: dirsigler
+    name: uptime-kuma
+    sources:
+    - https://github.com/louislam/uptime-kuma
+    type: application
+    urls:
+    - https://yellowbox.itblognote.com/charts/uptime-kuma-2.24.0.tgz
+    version: 2.24.0
+generated: "2026-04-22T16:20:52.568461864Z"
