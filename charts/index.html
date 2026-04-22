@@ -1,130 +1,227 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yellowbox Helm Repository</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'Fira Code', monospace; }
-        .bg-grid { background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 20px 20px; }
+        /* Subtle grid background */
+        .bg-grid-pattern { 
+            background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        /* Hide scrollbar for code blocks but allow scrolling */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-gray-950 text-gray-200 min-h-screen bg-grid">
+<body class="bg-[#0B1120] text-slate-300 min-h-screen bg-grid-pattern relative">
 
-    <nav class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <span class="text-2xl font-bold text-purple-500">⎈ Yellowbox</span>
-                <span class="text-gray-400 font-semibold hidden sm:inline">| Helm Repository</span>
+    <div class="absolute top-0 inset-x-0 h-96 bg-gradient-to-b from-purple-900/20 to-transparent pointer-events-none"></div>
+
+    <nav class="border-b border-white/10 bg-[#0B1120]/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                </div>
+                <span class="text-xl font-bold text-white tracking-tight">Yellowbox <span class="text-slate-500 font-medium hidden sm:inline">| Charts</span></span>
             </div>
-            <a href="../" class="text-sm font-medium text-gray-400 hover:text-white transition flex items-center">
+            <a href="../" class="text-sm font-medium text-slate-400 hover:text-white transition flex items-center bg-white/5 px-4 py-2 rounded-full hover:bg-white/10 border border-white/5">
                 &larr; Back to Hub
             </a>
         </div>
     </nav>
 
-    <main class="max-w-4xl mx-auto px-4 py-12">
-        <div class="mb-12 border-b border-gray-800 pb-8">
-            <h1 class="text-3xl font-bold text-white mb-4">Kubernetes Helm Charts</h1>
-            <p class="text-gray-400">
-                This is the official Helm repository for Yellowbox infrastructure. Add this repository to your Helm client to easily deploy and manage our applications on your Kubernetes clusters.
+    <main class="max-w-5xl mx-auto px-6 py-16 relative z-10">
+        <div class="mb-16">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 mb-4 tracking-tight">
+                Kubernetes Helm Registry
+            </h1>
+            <p class="text-lg text-slate-400 max-w-2xl leading-relaxed">
+                The official distribution center for Yellowbox infrastructure. Discover, pull, and deploy production-ready Kubernetes applications seamlessly.
             </p>
         </div>
 
-        <section class="mb-12">
-            <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                1. Add Repository
-            </h2>
-            <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
-                <code class="font-mono text-sm text-pink-400 block mb-2">
-                    helm repo add yellowbox https://yellowbox.itblognote.com/charts/
-                </code>
-                <code class="font-mono text-sm text-pink-400 block">
-                    helm repo update
-                </code>
+        <section class="mb-16 bg-slate-900/50 rounded-2xl border border-white/10 p-1 lg:p-1.5 backdrop-blur-sm shadow-2xl">
+            <div class="bg-[#0B1120] rounded-xl border border-white/5 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                <div>
+                    <h2 class="text-sm font-bold text-purple-400 uppercase tracking-wider mb-2 flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                        Repository Setup
+                    </h2>
+                    <p class="text-slate-400 text-sm">Run this once to add the repository to your local Helm client.</p>
+                </div>
+                <div class="w-full sm:w-auto bg-black/50 border border-white/10 rounded-lg p-1 flex items-center group">
+                    <code class="font-mono text-sm text-emerald-400 px-4 py-2 truncate whitespace-nowrap" id="repo-cmd">helm repo add yellowbox https://yellowbox.itblognote.com/charts/</code>
+                    <button onclick="copyCmd('repo-cmd', this)" class="ml-2 p-2 rounded-md bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition shrink-0" title="Copy command">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-8 flex justify-between items-end gap-4">
+            <div class="relative w-full max-w-md">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input type="text" id="searchInput" placeholder="Search charts by name or description..." 
+                       class="w-full bg-slate-900/50 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition">
+            </div>
+            <div class="text-sm text-slate-500 hidden sm:block">
+                Showing <span id="chartCount" class="text-white font-medium">0</span> charts
             </div>
         </section>
 
         <section>
-            <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                2. Available Charts
-            </h2>
-            
-            <div id="chart-list" class="space-y-6">
-                <p class="text-gray-500 animate-pulse">Đang tải danh sách Charts...</p>
+            <div id="chart-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-900/40 rounded-2xl border border-white/5 p-6 animate-pulse">
+                    <div class="flex gap-4 mb-4">
+                        <div class="w-12 h-12 bg-slate-800 rounded-lg"></div>
+                        <div class="flex-1">
+                            <div class="h-5 bg-slate-800 rounded w-1/2 mb-2"></div>
+                            <div class="h-3 bg-slate-800 rounded w-1/4"></div>
+                        </div>
+                    </div>
+                    <div class="h-16 bg-black/40 rounded-lg mt-6"></div>
+                </div>
             </div>
-            
+            <div id="no-results" class="hidden text-center py-16">
+                <svg class="w-16 h-16 text-slate-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <p class="text-slate-400 text-lg">No charts found matching your search.</p>
+            </div>
         </section>
     </main>
 
-    <footer class="border-t border-gray-800 mt-12 py-8 text-center text-sm text-gray-600">
-        <p>Helm is a tool for managing Kubernetes charts.</p>
-        <p class="mt-2"><a href="index.yaml" class="text-purple-500 hover:underline">View index.yaml</a></p>
+    <footer class="border-t border-white/10 mt-12 py-10 bg-[#0B1120]">
+        <div class="max-w-5xl mx-auto px-6 text-center text-sm text-slate-500">
+            <p>Powered by Helm & GitHub Actions. &copy; 2026 Yellowbox Project.</p>
+            <p class="mt-3">
+                <a href="index.yaml" class="text-slate-400 hover:text-white transition hover:underline inline-flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                    View raw index.yaml
+                </a>
+            </p>
+        </div>
     </footer>
 
     <script>
-        async function loadCharts() {
-            try {
-                // Tải file index.yaml
-                const response = await fetch('index.yaml');
-                if (!response.ok) throw new Error('Không tìm thấy index.yaml');
-                const yamlText = await response.text();
+        let allCharts = []; // Lưu trữ dữ liệu gốc
+
+        // Hàm xử lý copy lệnh
+        function copyCmd(elementId, btnElement) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                // Thay đổi icon sang checkmark
+                const originalHTML = btnElement.innerHTML;
+                btnElement.innerHTML = `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                btnElement.classList.add('bg-emerald-500/10');
                 
-                // Phân tích YAML thành Object JavaScript
-                const data = jsyaml.load(yamlText);
-                const chartListDiv = document.getElementById('chart-list');
-                chartListDiv.innerHTML = ''; // Xóa chữ "Đang tải..."
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHTML;
+                    btnElement.classList.remove('bg-emerald-500/10');
+                }, 2000);
+            });
+        }
 
-                // Kiểm tra xem có chart nào không
-                if (!data || !data.entries || Object.keys(data.entries).length === 0) {
-                    chartListDiv.innerHTML = '<p class="text-gray-500">Chưa có Chart nào trong Repository này.</p>';
-                    return;
-                }
+        // Render giao diện danh sách Chart
+        function renderCharts(chartsToRender) {
+            const chartListDiv = document.getElementById('chart-list');
+            const noResultsDiv = document.getElementById('no-results');
+            const chartCountSpan = document.getElementById('chartCount');
+            
+            chartListDiv.innerHTML = '';
+            chartCountSpan.innerText = chartsToRender.length;
 
-                // Lặp qua từng chart và vẽ ra HTML
-                for (const [chartName, versions] of Object.entries(data.entries)) {
-                    // Lấy phiên bản mới nhất (thường nằm đầu mảng)
-                    const latest = versions[0];
-                    const description = latest.description || "Không có mô tả.";
-
-                    // Tạo khối HTML cho mỗi chart
+            if (chartsToRender.length === 0) {
+                noResultsDiv.classList.remove('hidden');
+            } else {
+                noResultsDiv.classList.add('hidden');
+                
+                chartsToRender.forEach((chart, index) => {
+                    const cmdId = `install-cmd-${index}`;
+                    const appVersion = chart.appVersion ? `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider">App v${chart.appVersion}</span>` : '';
+                    
                     const chartCard = `
-                        <div class="bg-gray-800/50 rounded-xl border border-gray-700 p-6 hover:bg-gray-800 transition">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-lg font-bold text-white text-purple-400">${latest.name}</h3>
-                                    <p class="text-sm text-gray-400 mt-1">${description}</p>
+                        <div class="group bg-slate-900/40 rounded-2xl border border-white/5 p-6 hover:bg-slate-800/60 hover:border-white/10 transition duration-300 relative overflow-hidden">
+                            <div class="absolute -right-10 -top-10 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition"></div>
+                            
+                            <div class="flex items-start gap-4 mb-5 relative z-10">
+                                <div class="w-12 h-12 bg-slate-800 border border-white/10 rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                                    <span class="text-xl font-bold text-white uppercase">${chart.name.charAt(0)}</span>
                                 </div>
-                                <span class="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded font-mono">v${latest.version}</span>
+                                <div>
+                                    <h3 class="text-lg font-bold text-white group-hover:text-purple-400 transition">${chart.name}</h3>
+                                    <div class="flex flex-wrap gap-2 mt-1.5">
+                                        <span class="bg-slate-800 text-slate-300 border border-white/10 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider">Chart v${chart.version}</span>
+                                        ${appVersion}
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div class="mt-4">
-                                <p class="text-sm text-gray-500 mb-2">Install command:</p>
-                                <div class="bg-black rounded-lg p-4 overflow-x-auto">
-                                    <code class="font-mono text-sm text-green-400 whitespace-nowrap">
-                                        helm install ${latest.name} yellowbox/${latest.name} --version ${latest.version}
-                                    </code>
+                            <p class="text-sm text-slate-400 mb-6 line-clamp-2 relative z-10 min-h-[40px]">${chart.description || "No description provided."}</p>
+                            
+                            <div class="relative z-10">
+                                <div class="bg-black/60 border border-white/5 rounded-lg p-1.5 flex items-center justify-between">
+                                    <code id="${cmdId}" class="font-mono text-xs text-slate-300 pl-3 py-2 no-scrollbar overflow-x-auto whitespace-nowrap">helm install my-${chart.name} yellowbox/${chart.name} --version ${chart.version}</code>
+                                    <button onclick="copyCmd('${cmdId}', this)" class="ml-2 p-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition shrink-0" title="Copy install command">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     `;
-                    // Bơm HTML vào trang
                     chartListDiv.innerHTML += chartCard;
-                }
-            } catch (error) {
-                console.error('Lỗi tải Charts:', error);
-                document.getElementById('chart-list').innerHTML = `<p class="text-red-400">Không thể tải danh sách Chart. Vui lòng kiểm tra lại file index.yaml.</p>`;
+                });
             }
         }
 
-        // Chạy hàm khi trang web vừa tải xong
-        loadCharts();
+        // Tải dữ liệu từ index.yaml
+        async function fetchYamlData() {
+            try {
+                const response = await fetch('index.yaml');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const yamlText = await response.text();
+                const data = jsyaml.load(yamlText);
+
+                if (data && data.entries) {
+                    // Chuyển object thành mảng phẳng để dễ search và render
+                    allCharts = Object.values(data.entries).map(versions => versions[0]); 
+                    renderCharts(allCharts);
+                } else {
+                    renderCharts([]);
+                }
+            } catch (error) {
+                console.error('Error parsing YAML:', error);
+                document.getElementById('chart-list').innerHTML = `
+                    <div class="col-span-full text-center py-10 text-rose-400 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                        <p class="font-medium">⚠️ Failed to load repository index.</p>
+                        <p class="text-sm mt-1 opacity-80">Make sure index.yaml exists and is valid.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Lắng nghe sự kiện tìm kiếm
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredCharts = allCharts.filter(chart => {
+                const matchName = chart.name.toLowerCase().includes(searchTerm);
+                const matchDesc = chart.description && chart.description.toLowerCase().includes(searchTerm);
+                return matchName || matchDesc;
+            });
+            renderCharts(filteredCharts);
+        });
+
+        // Khởi chạy
+        fetchYamlData();
     </script>
 </body>
 </html>
