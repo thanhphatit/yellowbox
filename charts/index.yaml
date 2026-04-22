@@ -1,0 +1,13 @@
+apiVersion: v1
+entries:
+  oblivion-sentinel:
+    - apiVersion: v2
+      appVersion: 1.0.0
+      created: "2026-04-22T15:56:00Z"
+      description: A monitoring and automated cleanup agent for Kubernetes environments.
+      digest: dummy-hash-please-regenerate-via-helm-command
+      name: oblivion-sentinel
+      urls:
+        - https://yellowbox.itblognote.com/charts/oblivion-sentinel-0.0.10.tgz
+      version: 0.0.10
+generated: "2026-04-22T15:56:00Z"

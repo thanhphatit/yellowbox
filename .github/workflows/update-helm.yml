@@ -1,0 +1,26 @@
+name: Auto Update Helm Index
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'charts/*.tgz'
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: latest
+      - name: Re-generate index.yaml
+        run: |
+          helm repo index charts/ --url https://yellowbox.itblognote.com/charts/
+      - name: Commit and Push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/index.yaml
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-update helm index.yaml [skip ci]" && git push)

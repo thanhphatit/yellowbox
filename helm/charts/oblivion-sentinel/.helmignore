@@ -1,8 +1,0 @@
-.git/
-.github/
-.idea/
-.vscode/
-*.swp
-*.swo
-*.bak
-.DS_Store

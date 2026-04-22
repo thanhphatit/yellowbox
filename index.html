@@ -1,205 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Greybox – DevOps & Tools Hub</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yellowbox Distribution Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0e1117;
-            --panel: #161b22;
-            --accent: #00c2ff;
-            --text: #d9e0ee;
-            --muted: #8892a6;
-            --border: #2b313c;
-        }
-
-        body {
-            font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            margin: 0;
-            line-height: 1.6;
-        }
-
-        header {
-            text-align: center;
-            padding: 3rem 1rem;
-            background: linear-gradient(90deg, #0e1117 0%, #10131a 100%);
-            border-bottom: 1px solid var(--border);
-        }
-
-        header h1 {
-            font-size: 2.4rem;
-            margin: 0;
-            background: linear-gradient(90deg, var(--accent), #66e0ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        header p {
-            color: var(--muted);
-            margin-top: 0.8rem;
-            font-size: 1.1rem;
-        }
-
-        main {
-            max-width: 900px;
-            margin: 3rem auto;
-            padding: 0 1.5rem;
-        }
-
-        section {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.8rem 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        section:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-        }
-
-        h2 {
-            color: var(--accent);
-            font-size: 1.3rem;
-            margin-top: 0;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.4rem;
-            margin-bottom: 1rem;
-        }
-
-        ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        li {
-            margin: 0.4rem 0;
-            padding: 0.3rem 0;
-        }
-
-        code {
-            background: #1b1f27;
-            padding: 0.3rem 0.5rem;
-            border-radius: 6px;
-            color: #ffb86b;
-            font-size: 0.95rem;
-        }
-
-        footer {
-            text-align: center;
-            color: var(--muted);
-            padding: 2rem 1rem 3rem;
-            border-top: 1px solid var(--border);
-            font-size: 0.95rem;
-        }
-
-        .repo-structure {
-            background: #0d1117;
-            border-radius: 8px;
-            padding: 1rem;
-            font-family: monospace;
-            white-space: pre;
-            font-size: 0.95rem;
-            border: 1px solid var(--border);
-            overflow-x: auto;
-        }
-
-        a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .bg-grid { background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px); background-size: 20px 20px; }
     </style>
 </head>
+<body class="bg-gray-900 text-gray-200 min-h-screen bg-grid">
 
-<body>
-    <header>
-        <h1>Greybox</h1>
-        <p>Unified Hub for DevOps Scripts, Tools, and Helm Charts</p>
-    </header>
-
-    <main>
-        <section>
-            <h2>About</h2>
-            <p>
-                <strong>Greybox</strong> is my unified repository — a single, structured hub that hosts every
-                <em>tool</em>, <em>script</em>, and <em>Helm chart</em> I’ve built or curated.
-                Instead of scattering small projects across multiple repos, everything here lives together,
-                neatly categorized for clarity and scalability.
-            </p>
-            <p>
-                Each directory represents a functional layer of my personal DevOps ecosystem — from Kubernetes
-                deployments
-                to automation utilities and experiment tools.
-            </p>
-        </section>
-
-        <section>
-            <h2>Current Repository Structure</h2>
-            <div class="repo-structure">
-                .greybox/
-                ├── CNAME
-                ├── index.html
-                ├── README.md
-                ├── helm/
-                │ └── charts/
-                ├── tools/
-                │ ├── bash/
-                │ └── python/
+    <!-- Navbar -->
+    <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-bold text-yellow-500">📦 Yellowbox</span>
+                <span class="text-gray-400 font-semibold hidden sm:inline">| Distribution Hub</span>
             </div>
-            <p><em>This structure will continue expanding as more toolsets and modules are added.</em></p>
-        </section>
+            <a href="https://github.com/<your-username>/yellowbox" target="_blank" class="text-sm font-medium text-gray-300 hover:text-white transition">
+                View on GitHub &rarr;
+            </a>
+        </div>
+    </nav>
 
-        <section>
-            <h2>Folders Overview</h2>
-            <ul>
-                <li><code>helm/</code> – Contains Helm-related assets and Kubernetes charts.</li>
-                <li><code>charts/</code> – Subdirectory under Helm for organized chart sets.</li>
-                <li><code>tools/bash/</code> – Shell scripts, cleanup utilities, and automation routines.</li>
-                <li><code>tools/python/</code> – Python-based utilities or APIs for system tasks or integrations.</li>
-                <li><code>index.html</code> – This very overview page, used for GitHub Pages or documentation landing.
-                </li>
-                <li><code>CNAME</code> – Custom domain binding for the GitHub Pages site.</li>
-            </ul>
-        </section>
-
-        <section>
-            <h2>Philosophy</h2>
-            <p>
-                <em>“Build once, reuse everywhere.”</em>
-                Every script and chart here is designed with reusability, observability, and minimal configuration in
-                mind.
-                The repo is built to grow — whether for internal automation, Helm packaging, or simple CLI utilities.
+    <!-- Hero Section -->
+    <main class="max-w-6xl mx-auto px-4 py-16 sm:py-24">
+        <div class="text-center max-w-3xl mx-auto mb-16">
+            <h1 class="text-4xl sm:text-6xl font-bold text-white mb-6 tracking-tight">
+                Automate Your Infrastructure
+            </h1>
+            <p class="text-lg text-gray-400 mb-8">
+                The official distribution center for Yellowbox CI/CD tools, Git utilities, and production-ready Helm Charts. Built for speed, scale, and multi-platform support.
             </p>
-        </section>
+        </div>
 
-        <section>
-            <h2>Future Expansion</h2>
-            <p>
-                The structure is modular — easily extensible to include:
-            </p>
-            <ul>
-                <li><code>/apps/</code> – Application prototypes or microservices.</li>
-                <li><code>/infra/</code> – Infrastructure definitions (Terraform, Ansible, etc.).</li>
-                <li><code>/scripts/</code> – Cross-language or mixed orchestration scripts.</li>
-                <li><code>/docs/</code> – Reference notes, design documents, or usage manuals.</li>
-            </ul>
-        </section>
+        <!-- Installation Grid -->
+        <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            
+            <!-- Tools Installer Card -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl hover:border-blue-500/50 transition-colors">
+                <div class="flex items-center mb-4 space-x-3">
+                    <div class="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-white">Install CLI Tools</h2>
+                </div>
+                <p class="text-sm text-gray-400 mb-4">Install cicd-manager and git-push utilities instantly via our installation script (Linux & macOS).</p>
+                <div class="bg-black rounded-lg p-4 flex flex-col group relative overflow-x-auto">
+                    <span class="text-xs text-gray-500 mb-2 font-mono uppercase">Terminal</span>
+                    <code class="font-mono text-sm text-green-400 whitespace-nowrap">
+                        curl -sSL https://&lt;your-username&gt;.github.io/yellowbox/scripts/install.sh | bash
+                    </code>
+                </div>
+                <div class="mt-4 text-sm text-gray-500">
+                    Windows users? <a href="./bin" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors">Browse /bin directory directly</a>.
+                </div>
+            </div>
+
+            <!-- Helm Charts Card -->
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl hover:border-purple-500/50 transition-colors">
+                <div class="flex items-center mb-4 space-x-3">
+                    <div class="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-white">Helm Repository</h2>
+                </div>
+                <p class="text-sm text-gray-400 mb-4">Add the Yellowbox repository to your Helm client to deploy infrastructure charts like oblivion-sentinel.</p>
+                <div class="bg-black rounded-lg p-4 flex flex-col overflow-x-auto">
+                    <span class="text-xs text-gray-500 mb-2 font-mono uppercase">Terminal</span>
+                    <code class="font-mono text-sm text-pink-400 whitespace-nowrap">
+                        helm repo add yellowbox https://&lt;your-username&gt;.github.io/yellowbox/charts/ <br><br>
+                        helm repo update
+                    </code>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Directory Structure Preview -->
+        <div class="mt-16 max-w-3xl mx-auto bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl hidden md:block">
+             <h3 class="text-lg font-bold text-white mb-4 flex items-center">
+                 <svg class="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                 Repository Structure
+             </h3>
+             <pre class="font-mono text-sm text-gray-300 bg-black/50 p-4 rounded-lg overflow-x-auto">
+yellowbox/
+├── bin/
+│   ├── cicd-manager/
+│   │   ├── darwin-arm64
+│   │   ├── linux-amd64
+│   │   └── windows-amd64
+│   └── git-push/
+├── charts/
+│   ├── index.yaml
+│   └── oblivion-sentinel-0.0.10.tgz
+└── scripts/
+    └── install.sh</pre>
+        </div>
     </main>
 
-    <footer>
-        <p>© 2025 Greybox • Designed & maintained by <strong>ThanhPhat IT</strong></p>
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 mt-12 py-8 text-center text-sm text-gray-500">
+        <p>&copy; 2026 Yellowbox Project. All rights reserved.</p>
+        <p class="mt-2">Distributed under the MIT License.</p>
     </footer>
-</body>
 
+</body>
 </html>

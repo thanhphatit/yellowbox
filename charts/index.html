@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yellowbox Helm Repository</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'Fira Code', monospace; }
+        .bg-grid { background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 20px 20px; }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-200 min-h-screen bg-grid">
+
+    <nav class="border-b border-gray-800 bg-gray-950/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-bold text-purple-500">⎈ Yellowbox</span>
+                <span class="text-gray-400 font-semibold hidden sm:inline">| Helm Repository</span>
+            </div>
+            <a href="../" class="text-sm font-medium text-gray-400 hover:text-white transition flex items-center">
+                &larr; Back to Hub
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 py-12">
+        <div class="mb-12 border-b border-gray-800 pb-8">
+            <h1 class="text-3xl font-bold text-white mb-4">Kubernetes Helm Charts</h1>
+            <p class="text-gray-400">
+                This is the official Helm repository for Yellowbox infrastructure. Add this repository to your Helm client to easily deploy and manage our applications on your Kubernetes clusters.
+            </p>
+        </div>
+
+        <section class="mb-12">
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                1. Add Repository
+            </h2>
+            <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
+                <code class="font-mono text-sm text-pink-400 block mb-2">
+                    helm repo add yellowbox https://yellowbox.itblognote.com/charts/
+                </code>
+                <code class="font-mono text-sm text-pink-400 block">
+                    helm repo update
+                </code>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                2. Available Charts
+            </h2>
+            
+            <div id="chart-list" class="space-y-6">
+                <p class="text-gray-500 animate-pulse">Đang tải danh sách Charts...</p>
+            </div>
+            
+        </section>
+    </main>
+
+    <footer class="border-t border-gray-800 mt-12 py-8 text-center text-sm text-gray-600">
+        <p>Helm is a tool for managing Kubernetes charts.</p>
+        <p class="mt-2"><a href="index.yaml" class="text-purple-500 hover:underline">View index.yaml</a></p>
+    </footer>
+
+    <script>
+        async function loadCharts() {
+            try {
+                // Tải file index.yaml
+                const response = await fetch('index.yaml');
+                if (!response.ok) throw new Error('Không tìm thấy index.yaml');
+                const yamlText = await response.text();
+                
+                // Phân tích YAML thành Object JavaScript
+                const data = jsyaml.load(yamlText);
+                const chartListDiv = document.getElementById('chart-list');
+                chartListDiv.innerHTML = ''; // Xóa chữ "Đang tải..."
+
+                // Kiểm tra xem có chart nào không
+                if (!data || !data.entries || Object.keys(data.entries).length === 0) {
+                    chartListDiv.innerHTML = '<p class="text-gray-500">Chưa có Chart nào trong Repository này.</p>';
+                    return;
+                }
+
+                // Lặp qua từng chart và vẽ ra HTML
+                for (const [chartName, versions] of Object.entries(data.entries)) {
+                    // Lấy phiên bản mới nhất (thường nằm đầu mảng)
+                    const latest = versions[0];
+                    const description = latest.description || "Không có mô tả.";
+
+                    // Tạo khối HTML cho mỗi chart
+                    const chartCard = `
+                        <div class="bg-gray-800/50 rounded-xl border border-gray-700 p-6 hover:bg-gray-800 transition">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-white text-purple-400">${latest.name}</h3>
+                                    <p class="text-sm text-gray-400 mt-1">${description}</p>
+                                </div>
+                                <span class="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded font-mono">v${latest.version}</span>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <p class="text-sm text-gray-500 mb-2">Install command:</p>
+                                <div class="bg-black rounded-lg p-4 overflow-x-auto">
+                                    <code class="font-mono text-sm text-green-400 whitespace-nowrap">
+                                        helm install my-${latest.name} yellowbox/${latest.name} --version ${latest.version}
+                                    </code>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    // Bơm HTML vào trang
+                    chartListDiv.innerHTML += chartCard;
+                }
+            } catch (error) {
+                console.error('Lỗi tải Charts:', error);
+                document.getElementById('chart-list').innerHTML = `<p class="text-red-400">Không thể tải danh sách Chart. Vui lòng kiểm tra lại file index.yaml.</p>`;
+            }
+        }
+
+        // Chạy hàm khi trang web vừa tải xong
+        loadCharts();
+    </script>
+</body>
+</html>
