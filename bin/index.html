@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yellowbox Binary Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B1120;
+            color: #94A3B8;
+        }
+
+        .bg-grid {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body class="bg-grid min-h-screen">
+    <nav class="border-b border-white/10 glass sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <span class="text-2xl font-bold text-blue-500">🚀 Yellowbox</span>
+                <span class="text-slate-500 font-medium hidden sm:inline">| Binary Hub</span>
+            </div>
+            <a href="../" class="text-sm font-medium hover:text-white transition">&larr; Main Hub</a>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-12">
+        <header class="mb-12">
+            <h1 class="text-4xl font-extrabold text-white mb-4">CLI Tools Distribution</h1>
+            <p class="text-slate-400 max-w-2xl">Download pre-compiled binaries for your operating system. Updated
+                automatically on every release.</p>
+        </header>
+
+        <div id="tool-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="glass rounded-2xl p-6 animate-pulse h-64"></div>
+            <div class="glass rounded-2xl p-6 animate-pulse h-64"></div>
+        </div>
+    </main>
+
+    <script>
+        const BASE_URL = "https://yellowbox.itblognote.com/bin";
+
+        async function loadBinaries() {
+            try {
+                const res = await fetch('manifest.json');
+                const data = await res.json();
+                const grid = document.getElementById('tool-grid');
+                grid.innerHTML = '';
+
+                data.tools.forEach(tool => {
+                    const card = document.createElement('div');
+                    card.className = 'glass rounded-2xl p-6 hover:border-blue-500/50 transition duration-300 flex flex-col';
+
+                    let platformLinks = '';
+                    for (const [platform, files] of Object.entries(tool.platforms)) {
+                        platformLinks += `
+                            <div class="mt-4">
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">${platform}</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${files.map(f => `
+                                        <a href="${BASE_URL}/${tool.name}/${platform}/${f}" 
+                                           class="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition">
+                                           ${f}
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex items-center space-x-3 mb-4">
+                            <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-width="2"></path></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-white">${tool.name}</h3>
+                        </div>
+                        <div class="flex-1 overflow-y-auto no-scrollbar">${platformLinks}</div>
+                        <div class="mt-6 pt-4 border-t border-white/5">
+                            <code class="text-[10px] text-slate-500 font-mono">curl -sSL .../install.sh | bash -s -- ${tool.name}</code>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                document.getElementById('tool-grid').innerHTML = '<p class="text-rose-400">Failed to load manifest. Make sure to run the GitHub Action first.</p>';
+            }
+        }
+        loadBinaries();
+    </script>
+</body>
+
+</html>

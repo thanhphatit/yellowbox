@@ -1,0 +1,75 @@
+name: Auto Update Distribution Hub
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'charts/*.tgz'
+      - 'bin/**'
+
+jobs:
+  update-hub:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- PHẦN 1: CẬP NHẬT HELM ---
+      - uses: azure/setup-helm@v4
+      - name: Update Helm Index
+        run: helm repo index charts/ --url https://yellowbox.itblognote.com/charts/
+
+      # --- PHẦN 2: CẬP NHẬT BINARY MANIFEST (TỰ ĐỘNG QUÉT BIN/) ---
+      - name: Generate Binaries Manifest
+        run: |
+          # Script nhỏ để tạo JSON từ cấu trúc thư mục
+          echo "{" > bin/manifest.json
+          echo "  \"lastUpdated\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"," >> bin/manifest.json
+          echo "  \"tools\": [" >> bin/manifest.json
+          
+          FIRST_TOOL=true
+          for tool in bin/*/; do
+            if [ -d "$tool" ]; then
+              TOOL_NAME=$(basename "$tool")
+              [ "$FIRST_TOOL" = true ] || echo "    ," >> bin/manifest.json
+              echo "    {" >> bin/manifest.json
+              echo "      \"name\": \"$TOOL_NAME\"," >> bin/manifest.json
+              echo "      \"platforms\": {" >> bin/manifest.json
+              
+              FIRST_PLAT=true
+              for plat in "$tool"*/; do
+                if [ -d "$plat" ]; then
+                  PLAT_NAME=$(basename "$plat")
+                  [ "$FIRST_PLAT" = true ] || echo "        ," >> bin/manifest.json
+                  echo "        \"$PLAT_NAME\": [" >> bin/manifest.json
+                  
+                  FIRST_FILE=true
+                  for file in "$plat"*; do
+                    if [ -f "$file" ]; then
+                      FILE_NAME=$(basename "$file")
+                      [ "$FIRST_FILE" = true ] || echo "          ," >> bin/manifest.json
+                      echo "          \"$FILE_NAME\"" >> bin/manifest.json
+                      FIRST_FILE=false
+                    fi
+                  done
+                  echo "        ]" >> bin/manifest.json
+                  FIRST_PLAT=false
+                fi
+              done
+              echo "      }" >> bin/manifest.json
+              echo "    }" >> bin/manifest.json
+              FIRST_TOOL=false
+            fi
+          done
+          
+          echo "  ]" >> bin/manifest.json
+          echo "}" >> bin/manifest.json
+
+      # --- PHẦN 3: PUSH THAY ĐỔI ---
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/index.yaml bin/manifest.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-update hub manifests [skip ci]" && git push)
