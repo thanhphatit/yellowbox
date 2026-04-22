@@ -1,3 +1,4 @@
+# .github/workflows/update-dist.yml
 name: Auto Update Distribution Hub
 
 on:
@@ -15,61 +16,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # --- PHẦN 1: CẬP NHẬT HELM ---
+      # 1. Cập nhật Helm Index
       - uses: azure/setup-helm@v4
       - name: Update Helm Index
         run: helm repo index charts/ --url https://yellowbox.itblognote.com/charts/
 
-      # --- PHẦN 2: CẬP NHẬT BINARY MANIFEST (TỰ ĐỘNG QUÉT BIN/) ---
+      # 2. Sinh Manifest cho Binaries (Cực kỳ thông minh)
       - name: Generate Binaries Manifest
         run: |
-          # Script nhỏ để tạo JSON từ cấu trúc thư mục
-          echo "{" > bin/manifest.json
-          echo "  \"lastUpdated\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"," >> bin/manifest.json
-          echo "  \"tools\": [" >> bin/manifest.json
-          
-          FIRST_TOOL=true
-          for tool in bin/*/; do
-            if [ -d "$tool" ]; then
-              TOOL_NAME=$(basename "$tool")
-              [ "$FIRST_TOOL" = true ] || echo "    ," >> bin/manifest.json
-              echo "    {" >> bin/manifest.json
-              echo "      \"name\": \"$TOOL_NAME\"," >> bin/manifest.json
-              echo "      \"platforms\": {" >> bin/manifest.json
-              
-              FIRST_PLAT=true
-              for plat in "$tool"*/; do
-                if [ -d "$plat" ]; then
-                  PLAT_NAME=$(basename "$plat")
-                  [ "$FIRST_PLAT" = true ] || echo "        ," >> bin/manifest.json
-                  echo "        \"$PLAT_NAME\": [" >> bin/manifest.json
-                  
-                  FIRST_FILE=true
-                  for file in "$plat"*; do
-                    if [ -f "$file" ]; then
-                      FILE_NAME=$(basename "$file")
-                      [ "$FIRST_FILE" = true ] || echo "          ," >> bin/manifest.json
-                      echo "          \"$FILE_NAME\"" >> bin/manifest.json
-                      FIRST_FILE=false
-                    fi
-                  done
-                  echo "        ]" >> bin/manifest.json
-                  FIRST_PLAT=false
-                fi
-              done
-              echo "      }" >> bin/manifest.json
-              echo "    }" >> bin/manifest.json
-              FIRST_TOOL=false
-            fi
-          done
-          
-          echo "  ]" >> bin/manifest.json
-          echo "}" >> bin/manifest.json
+          python3 -c '
+          import os, json, time
+          manifest = {
+              "lastUpdated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+              "tools": []
+          }
+          bin_dir = "bin"
+          for tool_name in sorted(os.listdir(bin_dir)):
+              tool_path = os.path.join(bin_dir, tool_name)
+              if os.path.isdir(tool_path) and not tool_name.startswith("."):
+                  tool_data = {"name": tool_name, "platforms": {}}
+                  for plat_name in sorted(os.listdir(tool_path)):
+                      plat_path = os.path.join(tool_path, plat_name)
+                      if os.path.isdir(plat_path):
+                          files = [f for f in sorted(os.listdir(plat_path)) if os.path.isfile(os.path.join(plat_path, f)) and not f.startswith(".")]
+                          if files:
+                              tool_data["platforms"][plat_name] = files
+                  if tool_data["platforms"]:
+                      manifest["tools"].append(tool_data)
+          with open("bin/manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          '
 
-      # --- PHẦN 3: PUSH THAY ĐỔI ---
+      # 3. Commit & Push
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add charts/index.yaml bin/manifest.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-update hub manifests [skip ci]" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-update manifests [skip ci]" && git push)

@@ -1,104 +1,81 @@
 #!/bin/bash
 
 APP_NAME=$1
-SPECIFIC_FILE=$2 # Tham số tùy chọn để tải file lẻ
+SPECIFIC_FILE=$2
 
 if [ -z "$APP_NAME" ]; then
-    echo "❌ Please provide an app name."
-    echo "Usage: curl -sSL https://yellowbox.itblognote.com/scripts/install.sh | bash -s -- <app_name> [specific_file]"
+    echo "❌ Usage: curl -sSL https://yellowbox.itblognote.com/scripts/install.sh | bash -s -- <app_name> [specific_file]"
     exit 1
 fi
 
-# Detect OS and Arch
-OS_TYPE=$(uname -s | tr '[:upper:]' '[:lower:]')
-ARCH_TYPE=$(uname -m)
+# Detect OS/Arch
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$OS" == "darwin" ] && [ "$ARCH" == "arm64" ] && TARGET="darwin-arm64"
+[ "$OS" == "linux" ] && TARGET="linux-amd64"
 
-if [[ "$OS_TYPE" == "darwin" && "$ARCH_TYPE" == "arm64" ]]; then
-    TARGET="darwin-arm64"
-elif [[ "$OS_TYPE" == "linux" ]]; then
-    TARGET="linux-amd64"
-else
-    echo "❌ Unsupported OS/Architecture: $OS_TYPE $ARCH_TYPE"
+if [ -z "$TARGET" ]; then
+    echo "❌ Unsupported platform: $OS-$ARCH"
     exit 1
 fi
 
 BASE_URL="https://yellowbox.itblognote.com/bin"
-MANIFEST_URL="$BASE_URL/manifest.json"
+MANIFEST=$(curl -sSL "$BASE_URL/manifest.json")
 
-echo "🔍 Fetching repository manifest..."
-
-# Tải file manifest.json về bộ nhớ (không lưu ra đĩa)
-export MANIFEST_JSON=$(curl -sSL "$MANIFEST_URL")
-export REQ_APP="$APP_NAME"
-export REQ_TARGET="$TARGET"
-export REQ_FILE="$SPECIFIC_FILE"
-
-if [ -z "$MANIFEST_JSON" ] || [ "$MANIFEST_JSON" == "404: Not Found" ]; then
-    echo "❌ Failed to download manifest.json. Please ensure GitHub Actions has generated it."
-    exit 1
-fi
-
-# Dùng Python để phân tích JSON và lấy danh sách file cần cài
-# Python được sử dụng vì nó luôn có sẵn trên Linux/macOS thay vì jq
-FILES=$(python3 -c '
-import os, json, sys
+# Phân tích JSON bằng Python
+FILES=$(python3 -c "
+import json, os
 try:
-    data = json.loads(os.environ["MANIFEST_JSON"])
-    app_name = os.environ["REQ_APP"]
-    target = os.environ["REQ_TARGET"]
-    req_file = os.environ.get("REQ_FILE", "")
-    
-    for tool in data.get("tools", []):
-        if tool.get("name") == app_name:
-            files = tool.get("platforms", {}).get(target, [])
+    data = json.loads('''$MANIFEST''')
+    app = '$APP_NAME'
+    target = '$TARGET'
+    req_file = '$SPECIFIC_FILE'
+    for t in data.get('tools', []):
+        if t['name'] == app:
+            available = t['platforms'].get(target, [])
             if req_file:
-                if req_file in files:
-                    print(req_file)
-                    sys.exit(0)
-                else:
-                    sys.exit(2) # Lỗi: Có tool nhưng không có file yêu cầu
+                if req_file in available: print(req_file)
             else:
-                for f in files:
-                    print(f)
-                sys.exit(0)
-    sys.exit(1) # Lỗi: Không tìm thấy tool
-except Exception as e:
-    sys.exit(3) # Lỗi parsing
-' 2>/dev/null)
+                for f in available: print(f)
+except: pass
+")
 
-RET_CODE=$?
-
-if [ $RET_CODE -eq 1 ]; then
-    echo "❌ App '$APP_NAME' not found in the repository."
-    exit 1
-elif [ $RET_CODE -eq 2 ]; then
-    echo "❌ File '$SPECIFIC_FILE' not found in app '$APP_NAME' for $TARGET."
-    exit 1
-elif [ $RET_CODE -eq 3 ]; then
-    echo "❌ Error parsing manifest data."
-    exit 1
-elif [ -z "$FILES" ]; then
-    echo "❌ No binaries found for $APP_NAME on $TARGET."
+if [ -z "$FILES" ]; then
+    echo "❌ Tool '$APP_NAME' (or file '$SPECIFIC_FILE') not found for $TARGET."
     exit 1
 fi
 
-# Thực hiện vòng lặp tải từng file có trong danh sách
-echo "📦 Installing '$APP_NAME' for $TARGET..."
+# --- LOGIC CÀI ĐẶT THÔNG MINH (SUDO vs NORMAL) ---
+if [ "$(id -u)" -eq 0 ]; then
+    # Người dùng chạy bằng: sudo curl ... | sudo bash -s -- ...
+    INSTALL_DIR="/usr/local/bin"
+    echo "🛡️ Root privileges detected. Installing system-wide to $INSTALL_DIR..."
+else
+    # Người dùng chạy lệnh bình thường
+    INSTALL_DIR="$HOME/.local/bin"
+    echo "👤 Normal user detected. Installing locally to $INSTALL_DIR..."
+    # Tạo thư mục nếu chưa có
+    mkdir -p "$INSTALL_DIR"
+fi
 
+# Tải file
+echo "📦 Installing $APP_NAME..."
 for FILE in $FILES; do
-    DOWNLOAD_URL="$BASE_URL/$APP_NAME/$TARGET/$FILE"
-    echo "⏬ Downloading $FILE..."
+    echo "⏬ Fetching $FILE..."
+    URL="$BASE_URL/$APP_NAME/$TARGET/$FILE"
     
-    # Kiểm tra quyền root, nếu cần sudo thì thêm vào
-    if [ -w "/usr/local/bin" ]; then
-        curl -sSL "$DOWNLOAD_URL" -o "/usr/local/bin/$FILE"
-        chmod +x "/usr/local/bin/$FILE"
-    else
-        echo "   (Requesting root permissions to write to /usr/local/bin)"
-        sudo curl -sSL "$DOWNLOAD_URL" -o "/usr/local/bin/$FILE"
-        sudo chmod +x "/usr/local/bin/$FILE"
-    fi
+    curl -sSL "$URL" -o "$INSTALL_DIR/$FILE"
+    chmod +x "$INSTALL_DIR/$FILE"
 done
 
-echo ""
-echo "✅ Successfully installed!"
+echo "✅ Done!"
+
+# --- KIỂM TRA ĐƯỜNG DẪN MÔI TRƯỜNG ---
+if [ "$(id -u)" -ne 0 ]; then
+    if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
+        echo ""
+        echo "⚠️  WARNING: $INSTALL_DIR is not in your PATH."
+        echo "   To run the tools from anywhere, please add this line to your ~/.bashrc or ~/.zshrc:"
+        echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
+    fi
+fi
