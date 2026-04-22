@@ -11,23 +11,33 @@
         .font-mono { font-family: 'Fira Code', monospace; }
         .bg-grid { background-image: radial-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px); background-size: 32px 32px; }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .glass-card:hover { border-color: rgba(59, 130, 246, 0.3); transform: translateY(-4px); }
+        
+        /* THANH CUỘN CHO DÒNG LỆNH DÀI */
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
+        
+        code.scrollable {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade { animation: fade-in 0.4s ease-out forwards; }
     </style>
 </head>
 <body class="bg-grid min-h-screen pb-24">
-    
     <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-96 bg-blue-600/10 blur-[120px] pointer-events-none"></div>
 
     <nav class="border-b border-white/5 glass-card sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                </div>
-                <span class="text-xl font-bold text-white tracking-tight">Yellowbox <span class="text-blue-500">Registry</span></span>
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 text-lg font-bold">Y</div>
+                <span class="text-xl font-bold text-white tracking-tight">Yellowbox <span class="text-blue-500 font-medium">Registry</span></span>
             </div>
             <div class="flex items-center space-x-6">
                 <a href="../" class="text-sm font-medium hover:text-white transition-colors">Main Hub</a>
@@ -38,25 +48,15 @@
 
     <main class="max-w-6xl mx-auto px-6 py-16 relative">
         <header class="mb-12">
-            <div class="inline-flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-3 py-1 mb-6">
-                <span class="relative flex h-2 w-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-                <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Universal Distribution System</span>
-            </div>
-            <h1 class="text-5xl font-black text-white mb-4 tracking-tighter">CLI Tools & Binaries</h1>
+            <h1 class="text-5xl font-black text-white mb-4 tracking-tighter italic">CLI Distribution Hub</h1>
             <p class="text-slate-400 text-xl max-w-2xl leading-relaxed">
-                Production-grade binaries with automated installation. Detects your OS, architecture, and handles permissions automatically.
+                Tự động nhận diện OS/Arch. Cài đặt vào <code class="text-blue-400">/usr/local/bin</code> (với sudo) hoặc <code class="text-blue-400">~/.local/bin</code> (user thường).
             </p>
         </header>
 
         <div class="mb-12 relative">
-            <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none text-slate-500">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-            <input type="text" id="searchInput" placeholder="Search tools..." 
-                   class="w-full bg-slate-900/40 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm công cụ hoặc controller..." 
+                   class="w-full bg-slate-900/40 border border-white/10 rounded-2xl py-5 pl-6 pr-6 text-white text-lg placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner">
         </div>
 
         <div id="tool-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-8"></div>
@@ -74,7 +74,7 @@
                 allTools = data.tools;
                 render(allTools);
             } catch (e) {
-                document.getElementById('tool-grid').innerHTML = `<p class="text-red-400 text-center col-span-full">Manifest not found. Run GitHub Actions first.</p>`;
+                document.getElementById('tool-grid').innerHTML = `<p class="text-rose-400 text-center col-span-full">Lỗi: Không tìm thấy manifest.json.</p>`;
             }
         }
 
@@ -101,22 +101,16 @@
             btn.classList.remove('text-slate-500');
 
             if (mode === 'uninstall') {
-                label.innerText = `Run this command to remove the suite:`;
+                label.innerText = `Lệnh gỡ cài đặt bộ công cụ:`;
                 cmd.innerText = `curl -sSL ${DOMAIN}/scripts/uninstall.sh | bash -s -- ${toolName}`;
                 cmd.classList.replace('text-blue-400', 'text-rose-400');
                 if(components) components.style.opacity = '0.4';
             } else {
-                label.innerText = `Run this command to install the suite:`;
+                label.innerText = `Lệnh cài đặt bộ công cụ:`;
                 cmd.innerText = `curl -sSL ${DOMAIN}/scripts/install.sh | bash -s -- ${toolName}`;
                 cmd.classList.replace('text-rose-400', 'text-blue-400');
                 if(components) components.style.opacity = '1';
             }
-        }
-
-        function getIndivCmd(toolName, fileName) {
-            const mode = currentModes[toolName] || 'install';
-            const script = mode === 'uninstall' ? 'uninstall.sh' : 'install.sh';
-            return `curl -sSL ${DOMAIN}/scripts/${script} | bash -s -- ${toolName} ${fileName}`;
         }
 
         function render(tools) {
@@ -130,38 +124,35 @@
                 card.innerHTML = `
                     <div class="flex items-center justify-between mb-8">
                         <div class="flex items-center space-x-4">
-                            <div class="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-600/20 shadow-inner text-blue-500 font-black text-2xl uppercase">${tool.name.charAt(0)}</div>
+                            <div class="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-600/20 text-blue-500 font-black text-2xl uppercase">${tool.name.charAt(0)}</div>
                             <div>
-                                <h3 class="text-2xl font-black text-white tracking-tight">${tool.name}</h3>
-                                <div class="flex gap-2 mt-1">
-                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${Object.keys(tool.platforms).length} Platforms</span>
-                                    ${isSuite ? `<span class="text-[10px] font-bold text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded border border-purple-400/20 uppercase tracking-widest">${files.length} Components</span>` : ''}
-                                </div>
+                                <h3 class="text-2xl font-black text-white tracking-tight uppercase">${tool.name}</h3>
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">${files.length} Components</p>
                             </div>
                         </div>
                     </div>
                     <div class="flex space-x-6 border-b border-white/5 mb-6">
                         <button onclick="switchMode(this, '${tool.name}', 'install')" class="pb-3 text-sm font-bold tracking-widest uppercase tab-active transition-all">Install</button>
-                        <button onclick="switchMode(this, '${tool.name}', 'uninstall')" class="pb-3 text-sm font-bold tracking-widest uppercase text-slate-500 hover:text-slate-300 transition-all">Uninstall</button>
+                        <button onclick="switchMode(this, '${tool.name}', 'uninstall')" class="pb-3 text-sm font-bold tracking-widest uppercase text-slate-500 transition-all">Uninstall</button>
                     </div>
-                    <div class="space-y-6 flex-grow">
+                    <div class="space-y-6 flex-grow overflow-hidden">
                         <div>
-                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3" id="label-${tool.name}">Run this command to install:</p>
-                            <div class="bg-black/60 border border-white/5 rounded-xl p-4 flex items-center justify-between group">
-                                <code id="cmd-${tool.name}" class="font-mono text-xs text-blue-400 truncate no-scrollbar">curl -sSL ${DOMAIN}/scripts/install.sh | bash -s -- ${tool.name}</code>
-                                <button onclick="copy(document.getElementById('cmd-${tool.name}').innerText, this)" class="ml-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all shrink-0">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3" id="label-${tool.name}">Lệnh cài đặt bộ công cụ:</p>
+                            <div class="bg-black/60 border border-white/5 rounded-xl p-4 flex items-center justify-between group overflow-hidden">
+                                <code id="cmd-${tool.name}" class="font-mono text-xs text-blue-400 scrollable custom-scrollbar pr-4">curl -sSL ${DOMAIN}/scripts/install.sh | bash -s -- ${tool.name}</code>
+                                <button onclick="copy(document.getElementById('cmd-${tool.name}').innerText, this)" class="ml-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all shrink-0 z-10 shadow-lg">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 </button>
                             </div>
                         </div>
                         ${isSuite ? `
                         <div id="components-${tool.name}" class="pt-6 border-t border-white/5">
-                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Components</p>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Individual Components</p>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 ${files.map(f => `
-                                    <div class="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 hover:bg-white/10 transition group">
-                                        <span class="font-mono text-[11px] text-slate-400 group-hover:text-blue-400 transition-colors">${f}</span>
-                                        <button onclick="copy(getIndivCmd('${tool.name}', '${f}'), this)" class="text-slate-600 hover:text-white transition p-1">
+                                    <div class="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 hover:bg-white/10 transition group overflow-hidden">
+                                        <span class="font-mono text-[11px] text-slate-400 group-hover:text-blue-400 transition-colors truncate mr-2">${f}</span>
+                                        <button onclick="copy(getIndivCmd('${tool.name}', '${f}'), this)" class="text-slate-600 hover:text-white transition p-1 shrink-0">
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                         </button>
                                     </div>
@@ -179,6 +170,12 @@
             const filtered = allTools.filter(t => t.name.toLowerCase().includes(q) || Object.values(t.platforms).flat().some(f => f.toLowerCase().includes(q)));
             render(filtered);
         });
+
+        function getIndivCmd(toolName, fileName) {
+            const mode = currentModes[toolName] || 'install';
+            const script = mode === 'uninstall' ? 'uninstall.sh' : 'install.sh';
+            return `curl -sSL ${DOMAIN}/scripts/${script} | bash -s -- ${toolName} ${fileName}`;
+        }
 
         init();
     </script>
