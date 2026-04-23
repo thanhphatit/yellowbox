@@ -38,7 +38,7 @@ jobs:
           }
 
           # Ignore system directories or those not to be published
-          ignore_dirs = [".git", ".github", "scripts"]
+          ignore_dirs = [".git", ".github", "scripts", "assets"]
 
           for item in sorted(os.listdir(".")):
               if os.path.isdir(item) and item not in ignore_dirs and not item.startswith("."):
