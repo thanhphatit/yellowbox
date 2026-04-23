@@ -1,0 +1,12 @@
+{
+  "tools": [
+    {
+      "name": "my-extension",
+      "platforms": {
+        "linux-amd64": [
+          "test.sh"
+        ]
+      }
+    }
+  ]
+}

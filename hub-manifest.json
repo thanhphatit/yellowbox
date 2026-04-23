@@ -4,7 +4,7 @@
       "id": "bin",
       "title": "Binary Hub",
       "color": "blue",
-      "desc": "B\u1ed9 c\u00f4ng c\u1ee5 CLI \u0111a n\u1ec1n t\u1ea3ng Win/Mac/Linux. T\u1ef1 \u0111\u1ed9ng nh\u1eadn di\u1ec7n ki\u1ebfn tr\u00fac.",
+      "desc": "B\u1ed9 c\u00f4ng c\u1ee5 CLI th\u1ef1c thi cho \u0111a n\u1ec1n t\u1ea3ng.",
       "link": "./bin/",
       "manifest": "./bin/manifest.json",
       "type": "json",
@@ -14,12 +14,22 @@
       "id": "charts",
       "title": "Helm Charts",
       "color": "purple",
-      "desc": "Kho l\u01b0u tr\u1eef Kubernetes Charts \u0111\u00e3 \u0111\u01b0\u1ee3c \u0111\u00f3ng g\u00f3i v\u00e0 ki\u1ec3m duy\u1ec7t.",
+      "desc": "Kho l\u01b0u tr\u1eef Kubernetes Charts \u0111\u00e3 \u0111\u01b0\u1ee3c \u0111\u00f3ng g\u00f3i.",
       "link": "./charts/",
       "manifest": "./charts/index.yaml",
       "type": "yaml",
       "icon_svg": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg>"
+    },
+    {
+      "id": "plugins",
+      "title": "Plugins Hub",
+      "color": "emerald",
+      "desc": "Danh m\u1ee5c t\u00e0i nguy\u00ean m\u1edbi \u0111\u01b0\u1ee3c t\u1ef1 \u0111\u1ed9ng nh\u1eadn di\u1ec7n.",
+      "link": "./plugins/",
+      "manifest": "./plugins/manifest.json",
+      "type": "json",
+      "icon_svg": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg>"
     }
   ],
-  "lastUpdated": "Thu Apr 23 02:11:04 2026"
+  "lastUpdated": "Thu Apr 23 02:17:17 2026"
 }
