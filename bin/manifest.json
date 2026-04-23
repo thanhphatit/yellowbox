@@ -12,12 +12,12 @@
       "name": "cicd-manager",
       "platforms": {
         "linux-amd64": [
-          "docker-controller",
+          "release-controller",
+          "terraform-controller",
+          "k8s-controller",
           "config-controller",
           "helm-controller",
-          "k8s-controller",
-          "terraform-controller",
-          "release-controller"
+          "docker-controller"
         ]
       }
     }
