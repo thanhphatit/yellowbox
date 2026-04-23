@@ -1,113 +1,169 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yellowbox Distribution Hub</title>
+    <title>Yellowbox | Universal Distribution Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .font-mono { font-family: 'Fira Code', monospace; }
-        .bg-grid { background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px); background-size: 20px 20px; }
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #94A3B8; }
+        .bg-grid { background-image: radial-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px); background-size: 32px 32px; }
+        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .glass-card:hover { border-color: rgba(59, 130, 246, 0.3); transform: translateY(-4px); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5); }
+        .hero-gradient { background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 min-h-screen bg-grid">
+<body class="bg-grid min-h-screen relative overflow-x-hidden flex flex-col">
+    
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[500px] hero-gradient pointer-events-none"></div>
 
-    <!-- Navbar -->
-    <nav class="border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <span class="text-2xl font-bold text-yellow-500">📦 Yellowbox</span>
-                <span class="text-gray-400 font-semibold hidden sm:inline">| Distribution Hub</span>
+    <nav class="border-b border-white/5 bg-[#020617]/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 font-black text-xl">Y</div>
+                <div class="flex flex-col leading-tight">
+                    <span class="text-lg font-bold text-white tracking-tight">Yellowbox</span>
+                    <span class="text-[10px] uppercase tracking-[0.2em] text-blue-500 font-bold">Distribution Hub</span>
+                </div>
             </div>
-            <a href="https://github.com/<your-username>/yellowbox" target="_blank" class="text-sm font-medium text-gray-300 hover:text-white transition">
-                View on GitHub &rarr;
-            </a>
+            <div class="hidden md:flex items-center space-x-8" id="nav-links">
+                </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <main class="max-w-6xl mx-auto px-4 py-16 sm:py-24">
-        <div class="text-center max-w-3xl mx-auto mb-16">
-            <h1 class="text-4xl sm:text-6xl font-bold text-white mb-6 tracking-tight">
-                Automate Your Infrastructure
+    <main class="max-w-6xl mx-auto px-6 py-20 lg:py-32 flex-grow w-full">
+        <div class="text-center max-w-4xl mx-auto mb-20">
+            <div class="inline-flex items-center space-x-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-8">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                <span class="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Hệ thống phân phối: Tự động</span>
+            </div>
+            <h1 class="text-5xl lg:text-7xl font-black text-white mb-8 tracking-tighter leading-none italic uppercase">
+                Autonomous <br> <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-400">Registry Hub</span>
             </h1>
-            <p class="text-lg text-gray-400 mb-8">
-                The official distribution center for Yellowbox CI/CD tools, Git utilities, and production-ready Helm Charts. Built for speed, scale, and multi-platform support.
+            <p class="text-xl text-slate-400 mb-12 leading-relaxed max-w-2xl mx-auto">
+                Nền tảng phân phối tài nguyên hạ tầng. Mọi công cụ CLI và Helm Charts đều được đồng bộ tự động từ mã nguồn.
             </p>
-        </div>
-
-        <!-- Installation Grid -->
-        <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             
-            <!-- Tools Installer Card -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl hover:border-blue-500/50 transition-colors">
-                <div class="flex items-center mb-4 space-x-3">
-                    <div class="p-2 bg-blue-500/20 rounded-lg text-blue-400">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    </div>
-                    <h2 class="text-xl font-bold text-white">Install CLI Tools</h2>
+            <div class="flex flex-wrap justify-center gap-8 px-10 py-6 glass-card rounded-3xl max-w-fit mx-auto">
+                <div class="text-center min-w-[100px]">
+                    <div class="text-white font-black text-3xl" id="total-categories">--</div>
+                    <div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Danh mục</div>
                 </div>
-                <p class="text-sm text-gray-400 mb-4">Install cicd-manager and git-push utilities instantly via our installation script (Linux & macOS).</p>
-                <div class="bg-black rounded-lg p-4 flex flex-col group relative overflow-x-auto">
-                    <span class="text-xs text-gray-500 mb-2 font-mono uppercase">Terminal</span>
-                    <code class="font-mono text-sm text-green-400 whitespace-nowrap">
-                        curl -sSL https://&lt;your-username&gt;.github.io/yellowbox/scripts/install.sh | bash
-                    </code>
-                </div>
-                <div class="mt-4 text-sm text-gray-500">
-                    Windows users? <a href="./bin" class="text-blue-400 hover:text-blue-300 hover:underline transition-colors">Browse /bin directory directly</a>.
+                <div class="w-px h-12 bg-white/10"></div>
+                <div class="text-center min-w-[100px]">
+                    <div class="text-white font-black text-3xl" id="total-resources">--</div>
+                    <div class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1">Tài nguyên</div>
                 </div>
             </div>
-
-            <!-- Helm Charts Card -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl hover:border-purple-500/50 transition-colors">
-                <div class="flex items-center mb-4 space-x-3">
-                    <div class="p-2 bg-purple-500/20 rounded-lg text-purple-400">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                    </div>
-                    <h2 class="text-xl font-bold text-white">Helm Repository</h2>
-                </div>
-                <p class="text-sm text-gray-400 mb-4">Add the Yellowbox repository to your Helm client to deploy infrastructure charts like oblivion-sentinel.</p>
-                <div class="bg-black rounded-lg p-4 flex flex-col overflow-x-auto">
-                    <span class="text-xs text-gray-500 mb-2 font-mono uppercase">Terminal</span>
-                    <code class="font-mono text-sm text-pink-400 whitespace-nowrap">
-                        helm repo add yellowbox https://&lt;your-username&gt;.github.io/yellowbox/charts/ <br><br>
-                        helm repo update
-                    </code>
-                </div>
-            </div>
-
         </div>
 
-        <!-- Directory Structure Preview -->
-        <div class="mt-16 max-w-3xl mx-auto bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-xl hidden md:block">
-             <h3 class="text-lg font-bold text-white mb-4 flex items-center">
-                 <svg class="w-5 h-5 mr-2 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                 Repository Structure
-             </h3>
-             <pre class="font-mono text-sm text-gray-300 bg-black/50 p-4 rounded-lg overflow-x-auto">
-yellowbox/
-├── bin/
-│   ├── cicd-manager/
-│   │   ├── darwin-arm64
-│   │   ├── linux-amd64
-│   │   └── windows-amd64
-│   └── git-push/
-├── charts/
-│   ├── index.yaml
-│   └── oblivion-sentinel-0.0.10.tgz
-└── scripts/
-    └── install.sh</pre>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto" id="hub-grid">
+            <div class="glass-card rounded-3xl p-8 animate-pulse h-64 border-white/5"></div>
+            <div class="glass-card rounded-3xl p-8 animate-pulse h-64 border-white/5"></div>
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-gray-800 mt-12 py-8 text-center text-sm text-gray-500">
-        <p>&copy; 2026 Yellowbox Project. All rights reserved.</p>
-        <p class="mt-2">Distributed under the MIT License.</p>
+    <footer class="border-t border-white/5 py-10 mt-auto">
+        <div class="max-w-6xl mx-auto px-6 text-center text-sm text-slate-500">
+            <p>&copy; 2026 Yellowbox Project. Professional Infrastructure Delivery.</p>
+        </div>
     </footer>
 
+    <script>
+        const HUB_MANIFEST_URL = './hub-manifest.json';
+
+        // Hàm đọc số lượng tài nguyên thực tế từ các manifest con
+        async function fetchResourceCount(cat) {
+            try {
+                const res = await fetch(cat.manifest);
+                if (cat.type === 'yaml') {
+                    const text = await res.text();
+                    const data = jsyaml.load(text);
+                    return Object.keys(data.entries || {}).length;
+                } else {
+                    const data = await res.json();
+                    return (data.tools || []).length;
+                }
+            } catch (e) { return 0; }
+        }
+
+        // Khởi tạo Hub
+        async function initHub() {
+            const grid = document.getElementById('hub-grid');
+            const nav = document.getElementById('nav-links');
+            
+            try {
+                // Tải file hub-manifest.json (do GitHub Action tạo ra)
+                const response = await fetch(HUB_MANIFEST_URL);
+                if (!response.ok) throw new Error("Chưa có manifest");
+                const hubData = await response.json();
+                const categories = hubData.categories || [];
+
+                document.getElementById('total-categories').innerText = categories.length;
+                grid.innerHTML = '';
+                nav.innerHTML = '';
+                let globalTotal = 0;
+
+                for (const cat of categories) {
+                    // Cập nhật thanh điều hướng (Navbar)
+                    nav.innerHTML += `<a href="${cat.link}" class="text-sm font-medium text-slate-400 hover:text-white transition">${cat.title}</a>`;
+                    
+                    // Lấy số lượng item thực tế (số tool hoặc số chart)
+                    const count = await fetchResourceCount(cat);
+                    globalTotal += count;
+
+                    // Vẽ Card giao diện
+                    const card = document.createElement('div');
+                    card.className = 'glass-card rounded-3xl p-8 flex flex-col group';
+                    
+                    // Phân bổ màu sắc tự động (Tailwind)
+                    const colorMap = {
+                        blue: { border: 'border-blue-500/20', text: 'text-blue-500', bg: 'bg-blue-500/10' },
+                        purple: { border: 'border-purple-500/20', text: 'text-purple-500', bg: 'bg-purple-500/10' },
+                        emerald: { border: 'border-emerald-500/20', text: 'text-emerald-500', bg: 'bg-emerald-500/10' }
+                    };
+                    const c = colorMap[cat.color] || colorMap.blue;
+
+                    card.innerHTML = `
+                        <div class="flex items-center mb-6 space-x-4">
+                            <div class="p-3 ${c.bg} rounded-2xl ${c.text} border ${c.border}">
+                                ${cat.icon_svg}
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-white tracking-tight">${cat.title}</h2>
+                                <p class="text-[10px] font-bold ${c.text} uppercase tracking-widest mt-1">${count} Resources Ready</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-400 text-base mb-8 leading-relaxed flex-grow">
+                            ${cat.desc}
+                        </p>
+                        <a href="${cat.link}" class="inline-flex items-center text-sm font-bold text-white group-hover:${c.text} transition-all bg-white/5 w-fit px-5 py-3 rounded-xl border border-white/5 hover:bg-white/10">
+                            Truy cập Hub
+                            <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        </a>
+                    `;
+                    grid.appendChild(card);
+                }
+
+                document.getElementById('total-resources').innerText = globalTotal;
+                nav.innerHTML += `<a href="https://github.com/thanhphatit/yellowbox" target="_blank" class="px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm font-bold text-white hover:bg-white/10 transition ml-4">GitHub</a>`;
+
+            } catch (error) {
+                console.error("Lỗi:", error);
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-20 glass-card rounded-3xl border-rose-500/20">
+                        <p class="text-rose-400 font-bold uppercase tracking-widest text-lg">⚠️ Đang chờ đồng bộ lần đầu</p>
+                        <p class="text-slate-500 mt-2">Vui lòng commit & push code để GitHub Actions tự động sinh file cấu hình JSON.</p>
+                    </div>`;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initHub);
+    </script>
 </body>
 </html>
