@@ -1,4 +1,4 @@
-name: Auto Update Yellowbox Hub
+name: YellowBox Hub
 
 on:
   push:
@@ -24,34 +24,34 @@ jobs:
 
           hub_categories = []
           
-          # Cấu hình giao diện mặc định cho các thư mục
+          # Default UI configuration for directories
           ui_config = {
-              "bin": {"title": "Binary Hub", "color": "blue", "desc": "Bộ công cụ CLI thực thi cho đa nền tảng.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path></svg>"},
-              "charts": {"title": "Helm Charts", "color": "purple", "desc": "Kho lưu trữ Kubernetes Charts đã được đóng gói.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg>"},
+              "bin": {"title": "Binary Hub", "color": "blue", "desc": "Cross-platform executable CLI toolset.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path></svg>"},
+              "charts": {"title": "Helm Charts", "color": "purple", "desc": "Repository for packaged Kubernetes Charts.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg>"},
               "plugins": {
                   "title": "Plugins & Extensions", 
                   "color": "orange", 
-                  "desc": "Kho giao diện và tiện ích mở rộng siêu cấp vip pro.", 
+                  "desc": "Premium repository for themes and extensions.", 
                   "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13 10V3L4 14h7v7l9-11h-7z\"></path></svg>"
               },
-              "default": {"color": "emerald", "desc": "Danh mục tài nguyên mới được tự động nhận diện.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg>"}
+              "default": {"color": "emerald", "desc": "Newly auto-detected resource category.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg>"}
           }
 
-          # Bỏ qua các thư mục hệ thống hoặc không cần publish
+          # Ignore system directories or those not to be published
           ignore_dirs = [".git", ".github", "scripts"]
 
           for item in sorted(os.listdir(".")):
               if os.path.isdir(item) and item not in ignore_dirs and not item.startswith("."):
                   
                   if item == "charts":
-                      # Charts xử lý riêng bằng file index.yaml của Helm
+                      # Charts are handled separately using Helm's index.yaml
                       hub_categories.append({
                           "id": "charts", "title": ui_config["charts"]["title"], "color": ui_config["charts"]["color"],
                           "desc": ui_config["charts"]["desc"], "link": f"./{item}/", "manifest": f"./{item}/index.yaml",
                           "type": "yaml", "icon_svg": ui_config["charts"]["icon"]
                       })
                   else:
-                      # Bất kỳ thư mục nào khác (bin, pkgs, python...) đều tự động sinh manifest.json
+                      # Any other directory (bin, pkgs, python...) automatically generates manifest.json
                       cat_manifest = {"tools": []}
                       for tool in sorted(os.listdir(item)):
                           t_path = os.path.join(item, tool)
@@ -63,7 +63,7 @@ jobs:
                                       t_data["platforms"][p] = [f for f in os.listdir(p_path) if os.path.isfile(os.path.join(p_path, f))]
                               if t_data["platforms"]: cat_manifest["tools"].append(t_data)
                       
-                      # Chỉ thêm vào Hub nếu thư mục đó thực sự có file bên trong
+                      # Only add to Hub if the directory actually contains files
                       if cat_manifest["tools"]:
                           with open(f"{item}/manifest.json", "w") as f:
                               json.dump(cat_manifest, f, indent=2)

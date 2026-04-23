@@ -22,7 +22,7 @@ fi
 BASE_URL="https://yellowbox.itblognote.com/bin"
 MANIFEST=$(curl -sSL "$BASE_URL/manifest.json")
 
-# Phân tích JSON bằng Python
+# Parse JSON using Python
 FILES=$(python3 -c "
 import json, os
 try:
@@ -45,20 +45,20 @@ if [ -z "$FILES" ]; then
     exit 1
 fi
 
-# --- LOGIC CÀI ĐẶT THÔNG MINH (SUDO vs NORMAL) ---
+# --- SMART INSTALLATION LOGIC (SUDO vs NORMAL) ---
 if [ "$(id -u)" -eq 0 ]; then
-    # Người dùng chạy bằng: sudo curl ... | sudo bash -s -- ...
+    # User ran with root privileges: sudo curl ... | sudo bash -s -- ...
     INSTALL_DIR="/usr/local/bin"
     echo "🛡️ Root privileges detected. Installing system-wide to $INSTALL_DIR..."
 else
-    # Người dùng chạy lệnh bình thường
+    # Normal user
     INSTALL_DIR="$HOME/.local/bin"
     echo "👤 Normal user detected. Installing locally to $INSTALL_DIR..."
-    # Tạo thư mục nếu chưa có
+    # Create directory if it doesn't exist
     mkdir -p "$INSTALL_DIR"
 fi
 
-# Tải file
+# Download files
 echo "📦 Installing $APP_NAME..."
 for FILE in $FILES; do
     echo "⏬ Fetching $FILE..."
@@ -70,7 +70,7 @@ done
 
 echo "✅ Done!"
 
-# --- KIỂM TRA ĐƯỜNG DẪN MÔI TRƯỜNG ---
+# --- CHECK ENVIRONMENT PATH ---
 if [ "$(id -u)" -ne 0 ]; then
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
         echo ""

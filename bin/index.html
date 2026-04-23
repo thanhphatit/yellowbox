@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yellowbox Binary Registry</title>
+    <title>YellowBox Binary Registry</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -26,7 +26,7 @@
         <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 text-lg font-bold">Y</div>
-                <span class="text-xl font-bold text-white tracking-tight">Yellowbox <span class="text-blue-500 font-medium">Registry</span></span>
+                <span class="text-xl font-bold text-white tracking-tight">YellowBox <span class="text-blue-500 font-medium">Registry</span></span>
             </div>
             <a href="../" class="text-sm font-medium hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg border border-white/5">Back to Hub</a>
         </div>
@@ -36,12 +36,12 @@
         <header class="mb-12">
             <h1 class="text-5xl font-black text-white mb-4 tracking-tighter italic">CLI Distribution Hub</h1>
             <p class="text-slate-400 text-xl max-w-2xl leading-relaxed">
-                Tự động nhận diện nền tảng. Hỗ trợ Bash Script (Mac/Linux) và PowerShell (Windows).
+                Auto-detects platform. Supports Bash Script (Mac/Linux) and PowerShell (Windows).
             </p>
         </header>
 
         <div class="mb-12 relative">
-            <input type="text" id="searchInput" placeholder="Tìm kiếm công cụ hoặc file..." 
+            <input type="text" id="searchInput" placeholder="Search for tools or files..." 
                    class="w-full bg-slate-900/40 border border-white/10 rounded-2xl py-5 pl-6 pr-6 text-white text-lg placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner">
         </div>
 
@@ -51,7 +51,7 @@
     <script>
         const DOMAIN = "https://yellowbox.itblognote.com";
         let allTools = [];
-        let toolStates = {}; // Lưu trữ state của từng tool: { 'cicd-manager': { mode: 'install', os: 'unix' } }
+        let toolStates = {}; // Stores state for each tool: { 'cicd-manager': { mode: 'install', os: 'unix' } }
 
         async function init() {
             try {
@@ -59,14 +59,14 @@
                 const data = await res.json();
                 allTools = data.tools;
                 
-                // Khởi tạo state mặc định cho mỗi tool
+                // Initialize default state for each tool
                 allTools.forEach(t => {
                     toolStates[t.name] = { mode: 'install', os: 'unix' };
                 });
                 
                 render(allTools);
             } catch (e) {
-                document.getElementById('tool-grid').innerHTML = `<p class="text-rose-400 text-center col-span-full">Lỗi: Không tìm thấy manifest.json.</p>`;
+                document.getElementById('tool-grid').innerHTML = `<p class="text-rose-400 text-center col-span-full">Error: manifest.json not found.</p>`;
             }
         }
 
@@ -79,7 +79,7 @@
             });
         }
 
-        // Hàm lấy lệnh chuẩn dựa trên HĐH và Chế độ
+        // Generate the standard command based on OS and Mode
         function getCommand(toolName, fileName = null) {
             const state = toolStates[toolName];
             const isUnix = state.os === 'unix';
@@ -98,26 +98,26 @@
             }
         }
 
-        // Cập nhật giao diện sau khi thay đổi state
+        // Update UI after state changes
         function updateUI(toolName) {
             const card = document.getElementById(`card-${toolName}`);
             const state = toolStates[toolName];
             const isInstall = state.mode === 'install';
 
-            // Cập nhật nhãn và lệnh chính
+            // Update label and main command
             const label = card.querySelector('.cmd-label');
             const mainCmd = card.querySelector('.main-cmd');
-            label.innerText = isInstall ? `Lệnh cài đặt bộ công cụ (${state.os}):` : `Lệnh gỡ bộ công cụ (${state.os}):`;
+            label.innerText = isInstall ? `Suite installation command (${state.os}):` : `Suite uninstallation command (${state.os}):`;
             mainCmd.innerText = getCommand(toolName);
 
-            // Đổi màu cảnh báo nếu là uninstall
+            // Toggle warning color for uninstall
             if (!isInstall) {
                 mainCmd.classList.replace('text-blue-400', 'text-rose-400');
             } else {
                 mainCmd.classList.replace('text-rose-400', 'text-blue-400');
             }
 
-            // Cập nhật các lệnh con (nếu là Suite)
+            // Update sub commands (if it's a Suite)
             const subCmds = card.querySelectorAll('.sub-cmd');
             subCmds.forEach(codeEl => {
                 const fileName = codeEl.dataset.file;
@@ -125,7 +125,7 @@
             });
         }
 
-        // Thay đổi Tab Install / Uninstall
+        // Switch Install / Uninstall Tab
         function switchMode(btn, toolName, mode) {
             toolStates[toolName].mode = mode;
             btn.parentElement.querySelectorAll('button').forEach(b => {
@@ -137,7 +137,7 @@
             updateUI(toolName);
         }
 
-        // Thay đổi OS (Mac/Linux vs Windows)
+        // Switch OS (Mac/Linux vs Windows)
         function switchOS(btn, toolName, os) {
             toolStates[toolName].os = os;
             btn.parentElement.querySelectorAll('button').forEach(b => {
@@ -151,7 +151,7 @@
             const grid = document.getElementById('tool-grid');
             grid.innerHTML = '';
             tools.forEach((tool) => {
-                // Xác định nền tảng (Lấy danh sách file từ unix làm gốc, nếu không có lấy windows)
+                // Determine platform (Prioritize unix files for display count, fallback to windows)
                 const unixFiles = tool.platforms['linux-amd64'] || tool.platforms['darwin-arm64'] || [];
                 const winFiles = tool.platforms['windows-amd64'] || [];
                 const hasWindows = winFiles.length > 0;
@@ -163,7 +163,7 @@
                 card.id = `card-${tool.name}`;
                 card.className = 'glass-card rounded-3xl p-8 flex flex-col relative';
                 
-                // OS Selector HTML (Chỉ hiện nếu có hỗ trợ Windows)
+                // OS Selector HTML (Only show if Windows is supported)
                 const osSelector = hasWindows ? `
                     <div class="absolute top-8 right-8 flex border border-white/10 rounded-lg overflow-hidden bg-black/40 p-0.5">
                         <button onclick="switchOS(this, '${tool.name}', 'unix')" class="os-active px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-colors flex items-center gap-1">
@@ -214,7 +214,7 @@
 
                     <div class="flex-grow overflow-hidden flex flex-col">
                         <div>
-                            <p class="cmd-label text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Lệnh cài đặt bộ công cụ (unix):</p>
+                            <p class="cmd-label text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Suite installation command (unix):</p>
                             <div class="bg-black/60 border border-white/5 rounded-xl p-4 flex items-center justify-between group overflow-hidden">
                                 <code id="cmd-main-${tool.name}" class="main-cmd font-mono text-xs text-blue-400 scrollable custom-scrollbar pr-4">
                                     ${getCommand(tool.name)}
@@ -229,7 +229,7 @@
                 `;
                 grid.appendChild(card);
                 
-                // Force update UI lần đầu để map đúng state hiện tại
+                // Force UI update on load to map the correct state
                 updateUI(tool.name);
             });
         }

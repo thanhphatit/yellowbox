@@ -23,7 +23,7 @@ fi
 BASE_URL="https://yellowbox.itblognote.com/bin"
 MANIFEST=$(curl -sSL "$BASE_URL/manifest.json")
 
-# Phân tích JSON để biết chính xác cần xóa những file nào
+# Parse JSON to determine exactly which files to remove
 FILES=$(python3 -c "
 import json, os
 try:
@@ -50,7 +50,7 @@ echo "🧹 Uninstalling $APP_NAME..."
 REMOVED_COUNT=0
 
 for FILE in $FILES; do
-    # 1. Kiểm tra và xóa ở thư mục Local (~/.local/bin)
+    # 1. Check and remove from Local directory (~/.local/bin)
     LOCAL_PATH="$HOME/.local/bin/$FILE"
     if [ -f "$LOCAL_PATH" ]; then
         rm "$LOCAL_PATH"
@@ -58,7 +58,7 @@ for FILE in $FILES; do
         REMOVED_COUNT=$((REMOVED_COUNT + 1))
     fi
 
-    # 2. Kiểm tra và xóa ở thư mục System (/usr/local/bin)
+    # 2. Check and remove from System directory (/usr/local/bin)
     SYSTEM_PATH="/usr/local/bin/$FILE"
     if [ -f "$SYSTEM_PATH" ]; then
         if [ -w "/usr/local/bin" ]; then

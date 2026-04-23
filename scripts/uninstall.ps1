@@ -5,7 +5,7 @@ $AppName = $env:APP_NAME
 $SpecificFile = $env:SPECIFIC_FILE
 
 if ([string]::IsNullOrWhiteSpace($AppName)) {
-    Write-Host "❌ Lỗi: Cần cung cấp tên app để gỡ." -ForegroundColor Red
+    Write-Host "❌ Error: App name is required for uninstallation." -ForegroundColor Red
     exit
 }
 
@@ -28,22 +28,22 @@ if (-not [string]::IsNullOrWhiteSpace($SpecificFile)) {
 }
 
 $InstallDir = "$env:USERPROFILE\.local\bin"
-Write-Host "🧹 Đang gỡ cài đặt $AppName..." -ForegroundColor Cyan
+Write-Host "🧹 Uninstalling $AppName..." -ForegroundColor Cyan
 $RemovedCount = 0
 
 foreach ($File in $Files) {
     $DestPath = Join-Path $InstallDir $File
     if (Test-Path -Path $DestPath) {
         Remove-Item -Path $DestPath -Force
-        Write-Host "   🗑️ Đã xóa: $File"
+        Write-Host "   🗑️ Deleted: $File"
         $RemovedCount++
     }
 }
 
 if ($RemovedCount -eq 0) {
-    Write-Host "⚠️ Không tìm thấy file nào để xóa." -ForegroundColor Yellow
+    Write-Host "⚠️ No files found to delete." -ForegroundColor Yellow
 } else {
-    Write-Host "✅ Gỡ cài đặt hoàn tất!" -ForegroundColor Green
+    Write-Host "✅ Uninstallation complete!" -ForegroundColor Green
 }
 
 [Environment]::SetEnvironmentVariable("APP_NAME", $null, "Process")
