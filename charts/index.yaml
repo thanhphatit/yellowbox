@@ -3,7 +3,7 @@ entries:
   oblivion-sentinel:
   - apiVersion: v2
     appVersion: 0.0.6
-    created: "2026-04-23T03:14:08.540892579Z"
+    created: "2026-04-23T03:17:14.574153665Z"
     description: Scan Kubernetes pods by health/time and apply a two-phase remediation,
       delete bad pods first, uninstall Helm releases later if degradation persists.
     digest: 0d850f773bc5b18f31ca5b8efa6d6c00693219410a44d22a04182ec6dfd708f8
@@ -25,7 +25,7 @@ entries:
   uptime-kuma:
   - apiVersion: v2
     appVersion: 1.23.17
-    created: "2026-04-23T03:14:08.546667556Z"
+    created: "2026-04-23T03:17:14.579981374Z"
     dependencies:
     - condition: mariadb.enabled
       name: mariadb
@@ -45,4 +45,4 @@ entries:
     urls:
     - https://yellowbox.itblognote.com/charts/uptime-kuma-2.24.0.tgz
     version: 2.24.0
-generated: "2026-04-23T03:14:08.539710904Z"
+generated: "2026-04-23T03:17:14.572992474Z"
