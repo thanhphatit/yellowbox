@@ -11,23 +11,12 @@
         .font-mono { font-family: 'Fira Code', monospace; }
         .bg-grid { background-image: radial-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px); background-size: 32px 32px; }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        
-        /* THANH CUỘN CHO DÒNG LỆNH DÀI */
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
-        
-        code.scrollable {
-            display: block;
-            overflow-x: auto;
-            white-space: nowrap;
-            padding-bottom: 8px;
-            -webkit-overflow-scrolling: touch;
-        }
-
+        code.scrollable { display: block; overflow-x: auto; white-space: nowrap; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
-        @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade { animation: fade-in 0.4s ease-out forwards; }
+        .os-active { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.5); }
     </style>
 </head>
 <body class="bg-grid min-h-screen pb-24">
@@ -39,10 +28,7 @@
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20 text-lg font-bold">Y</div>
                 <span class="text-xl font-bold text-white tracking-tight">Yellowbox <span class="text-blue-500 font-medium">Registry</span></span>
             </div>
-            <div class="flex items-center space-x-6">
-                <a href="../" class="text-sm font-medium hover:text-white transition-colors">Main Hub</a>
-                <a href="../charts" class="text-sm font-medium hover:text-white transition-colors">Helm Charts</a>
-            </div>
+            <a href="../" class="text-sm font-medium hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-lg border border-white/5">Back to Hub</a>
         </div>
     </nav>
 
@@ -50,12 +36,12 @@
         <header class="mb-12">
             <h1 class="text-5xl font-black text-white mb-4 tracking-tighter italic">CLI Distribution Hub</h1>
             <p class="text-slate-400 text-xl max-w-2xl leading-relaxed">
-                Tự động nhận diện OS/Arch. Cài đặt vào <code class="text-blue-400">/usr/local/bin</code> (với sudo) hoặc <code class="text-blue-400">~/.local/bin</code> (user thường).
+                Tự động nhận diện nền tảng. Hỗ trợ Bash Script (Mac/Linux) và PowerShell (Windows).
             </p>
         </header>
 
         <div class="mb-12 relative">
-            <input type="text" id="searchInput" placeholder="Tìm kiếm công cụ hoặc controller..." 
+            <input type="text" id="searchInput" placeholder="Tìm kiếm công cụ hoặc file..." 
                    class="w-full bg-slate-900/40 border border-white/10 rounded-2xl py-5 pl-6 pr-6 text-white text-lg placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 shadow-inner">
         </div>
 
@@ -65,20 +51,27 @@
     <script>
         const DOMAIN = "https://yellowbox.itblognote.com";
         let allTools = [];
-        let currentModes = {};
+        let toolStates = {}; // Lưu trữ state của từng tool: { 'cicd-manager': { mode: 'install', os: 'unix' } }
 
         async function init() {
             try {
                 const res = await fetch('manifest.json');
                 const data = await res.json();
                 allTools = data.tools;
+                
+                // Khởi tạo state mặc định cho mỗi tool
+                allTools.forEach(t => {
+                    toolStates[t.name] = { mode: 'install', os: 'unix' };
+                });
+                
                 render(allTools);
             } catch (e) {
                 document.getElementById('tool-grid').innerHTML = `<p class="text-rose-400 text-center col-span-full">Lỗi: Không tìm thấy manifest.json.</p>`;
             }
         }
 
-        function copy(text, btn) {
+        function copy(id, btn) {
+            const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text).then(() => {
                 const original = btn.innerHTML;
                 btn.innerHTML = `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
@@ -86,82 +79,158 @@
             });
         }
 
-        function switchMode(btn, toolName, mode) {
-            currentModes[toolName] = mode;
-            const card = btn.closest('.glass-card');
-            const label = card.querySelector(`#label-${toolName}`);
-            const cmd = card.querySelector(`#cmd-${toolName}`);
-            const components = card.querySelector(`#components-${toolName}`);
+        // Hàm lấy lệnh chuẩn dựa trên HĐH và Chế độ
+        function getCommand(toolName, fileName = null) {
+            const state = toolStates[toolName];
+            const isUnix = state.os === 'unix';
+            const isInstall = state.mode === 'install';
+            
+            const scriptFile = isInstall ? 'install' : 'uninstall';
+            
+            if (isUnix) {
+                const baseCmd = `curl -sSL ${DOMAIN}/scripts/${scriptFile}.sh | bash -s -- ${toolName}`;
+                return fileName ? `${baseCmd} ${fileName}` : baseCmd;
+            } else {
+                // Windows PowerShell Command
+                let envVars = `$env:APP_NAME='${toolName}'; `;
+                if (fileName) envVars += `$env:SPECIFIC_FILE='${fileName}'; `;
+                return `${envVars}irm ${DOMAIN}/scripts/${scriptFile}.ps1 | iex`;
+            }
+        }
 
+        // Cập nhật giao diện sau khi thay đổi state
+        function updateUI(toolName) {
+            const card = document.getElementById(`card-${toolName}`);
+            const state = toolStates[toolName];
+            const isInstall = state.mode === 'install';
+
+            // Cập nhật nhãn và lệnh chính
+            const label = card.querySelector('.cmd-label');
+            const mainCmd = card.querySelector('.main-cmd');
+            label.innerText = isInstall ? `Lệnh cài đặt bộ công cụ (${state.os}):` : `Lệnh gỡ bộ công cụ (${state.os}):`;
+            mainCmd.innerText = getCommand(toolName);
+
+            // Đổi màu cảnh báo nếu là uninstall
+            if (!isInstall) {
+                mainCmd.classList.replace('text-blue-400', 'text-rose-400');
+            } else {
+                mainCmd.classList.replace('text-rose-400', 'text-blue-400');
+            }
+
+            // Cập nhật các lệnh con (nếu là Suite)
+            const subCmds = card.querySelectorAll('.sub-cmd');
+            subCmds.forEach(codeEl => {
+                const fileName = codeEl.dataset.file;
+                codeEl.innerText = getCommand(toolName, fileName);
+            });
+        }
+
+        // Thay đổi Tab Install / Uninstall
+        function switchMode(btn, toolName, mode) {
+            toolStates[toolName].mode = mode;
             btn.parentElement.querySelectorAll('button').forEach(b => {
                 b.classList.remove('tab-active', 'text-blue-500');
                 b.classList.add('text-slate-500');
             });
             btn.classList.add('tab-active');
             btn.classList.remove('text-slate-500');
+            updateUI(toolName);
+        }
 
-            if (mode === 'uninstall') {
-                label.innerText = `Lệnh gỡ cài đặt bộ công cụ:`;
-                cmd.innerText = `curl -sSL ${DOMAIN}/scripts/uninstall.sh | bash -s -- ${toolName}`;
-                cmd.classList.replace('text-blue-400', 'text-rose-400');
-                if(components) components.style.opacity = '0.4';
-            } else {
-                label.innerText = `Lệnh cài đặt bộ công cụ:`;
-                cmd.innerText = `curl -sSL ${DOMAIN}/scripts/install.sh | bash -s -- ${toolName}`;
-                cmd.classList.replace('text-rose-400', 'text-blue-400');
-                if(components) components.style.opacity = '1';
-            }
+        // Thay đổi OS (Mac/Linux vs Windows)
+        function switchOS(btn, toolName, os) {
+            toolStates[toolName].os = os;
+            btn.parentElement.querySelectorAll('button').forEach(b => {
+                b.classList.remove('os-active');
+            });
+            btn.classList.add('os-active');
+            updateUI(toolName);
         }
 
         function render(tools) {
             const grid = document.getElementById('tool-grid');
             grid.innerHTML = '';
-            tools.forEach((tool, idx) => {
-                const files = tool.platforms['linux-amd64'] || Object.values(tool.platforms)[0] || [];
-                const isSuite = files.length > 1;
+            tools.forEach((tool) => {
+                // Xác định nền tảng (Lấy danh sách file từ unix làm gốc, nếu không có lấy windows)
+                const unixFiles = tool.platforms['linux-amd64'] || tool.platforms['darwin-arm64'] || [];
+                const winFiles = tool.platforms['windows-amd64'] || [];
+                const hasWindows = winFiles.length > 0;
+                
+                const displayFiles = unixFiles.length > 0 ? unixFiles : winFiles;
+                const isSuite = displayFiles.length > 1;
+
                 const card = document.createElement('div');
-                card.className = 'glass-card rounded-3xl p-8 flex flex-col animate-fade';
+                card.id = `card-${tool.name}`;
+                card.className = 'glass-card rounded-3xl p-8 flex flex-col relative';
+                
+                // OS Selector HTML (Chỉ hiện nếu có hỗ trợ Windows)
+                const osSelector = hasWindows ? `
+                    <div class="absolute top-8 right-8 flex border border-white/10 rounded-lg overflow-hidden bg-black/40 p-0.5">
+                        <button onclick="switchOS(this, '${tool.name}', 'unix')" class="os-active px-3 py-1.5 text-[10px] font-bold uppercase rounded-md transition-colors flex items-center gap-1">
+                            Mac/Linux
+                        </button>
+                        <button onclick="switchOS(this, '${tool.name}', 'win')" class="px-3 py-1.5 text-[10px] font-bold uppercase rounded-md text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1">
+                            Windows
+                        </button>
+                    </div>
+                ` : `<div class="absolute top-8 right-8 text-[10px] font-bold text-slate-500 uppercase px-3 py-1.5 border border-white/5 rounded-md bg-black/20">Unix Only</div>`;
+
+                let componentsHtml = '';
+                if (isSuite) {
+                    componentsHtml = `
+                    <div class="pt-6 border-t border-white/5 mt-6">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Individual Components</p>
+                        <div class="grid grid-cols-1 gap-3">
+                            ${displayFiles.map(f => `
+                                <div class="bg-black/40 border border-white/5 rounded-xl p-3 flex items-center justify-between group overflow-hidden">
+                                    <code id="cmd-${tool.name}-${f}" class="sub-cmd font-mono text-[11px] text-slate-400 scrollable custom-scrollbar pr-4" data-file="${f}">
+                                        ${getCommand(tool.name, f)}
+                                    </code>
+                                    <button onclick="copy('cmd-${tool.name}-${f}', this)" class="ml-2 p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white transition-all shrink-0 z-10 shadow-lg">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+                }
+
                 card.innerHTML = `
-                    <div class="flex items-center justify-between mb-8">
+                    ${osSelector}
+                    <div class="flex items-center justify-between mb-8 pr-24">
                         <div class="flex items-center space-x-4">
-                            <div class="w-14 h-14 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-600/20 text-blue-500 font-black text-2xl uppercase">${tool.name.charAt(0)}</div>
+                            <div class="w-12 h-12 bg-blue-600/10 rounded-xl flex items-center justify-center border border-blue-600/20 text-blue-500 font-black text-xl uppercase">${tool.name.charAt(0)}</div>
                             <div>
-                                <h3 class="text-2xl font-black text-white tracking-tight uppercase">${tool.name}</h3>
-                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">${files.length} Components</p>
+                                <h3 class="text-xl font-bold text-white tracking-tight uppercase">${tool.name}</h3>
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">${displayFiles.length} Components</p>
                             </div>
                         </div>
                     </div>
+
                     <div class="flex space-x-6 border-b border-white/5 mb-6">
                         <button onclick="switchMode(this, '${tool.name}', 'install')" class="pb-3 text-sm font-bold tracking-widest uppercase tab-active transition-all">Install</button>
-                        <button onclick="switchMode(this, '${tool.name}', 'uninstall')" class="pb-3 text-sm font-bold tracking-widest uppercase text-slate-500 transition-all">Uninstall</button>
+                        <button onclick="switchMode(this, '${tool.name}', 'uninstall')" class="pb-3 text-sm font-bold tracking-widest uppercase text-slate-500 hover:text-slate-300 transition-all">Uninstall</button>
                     </div>
-                    <div class="space-y-6 flex-grow overflow-hidden">
+
+                    <div class="flex-grow overflow-hidden flex flex-col">
                         <div>
-                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3" id="label-${tool.name}">Lệnh cài đặt bộ công cụ:</p>
+                            <p class="cmd-label text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Lệnh cài đặt bộ công cụ (unix):</p>
                             <div class="bg-black/60 border border-white/5 rounded-xl p-4 flex items-center justify-between group overflow-hidden">
-                                <code id="cmd-${tool.name}" class="font-mono text-xs text-blue-400 scrollable custom-scrollbar pr-4">curl -sSL ${DOMAIN}/scripts/install.sh | bash -s -- ${tool.name}</code>
-                                <button onclick="copy(document.getElementById('cmd-${tool.name}').innerText, this)" class="ml-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all shrink-0 z-10 shadow-lg">
+                                <code id="cmd-main-${tool.name}" class="main-cmd font-mono text-xs text-blue-400 scrollable custom-scrollbar pr-4">
+                                    ${getCommand(tool.name)}
+                                </code>
+                                <button onclick="copy('cmd-main-${tool.name}', this)" class="ml-4 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all shrink-0 z-10 shadow-lg">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 </button>
                             </div>
                         </div>
-                        ${isSuite ? `
-                        <div id="components-${tool.name}" class="pt-6 border-t border-white/5">
-                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Individual Components</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                ${files.map(f => `
-                                    <div class="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3 hover:bg-white/10 transition group overflow-hidden">
-                                        <span class="font-mono text-[11px] text-slate-400 group-hover:text-blue-400 transition-colors truncate mr-2">${f}</span>
-                                        <button onclick="copy(getIndivCmd('${tool.name}', '${f}'), this)" class="text-slate-600 hover:text-white transition p-1 shrink-0">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                        </button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>` : ''}
+                        ${componentsHtml}
                     </div>
                 `;
                 grid.appendChild(card);
+                
+                // Force update UI lần đầu để map đúng state hiện tại
+                updateUI(tool.name);
             });
         }
 
@@ -170,12 +239,6 @@
             const filtered = allTools.filter(t => t.name.toLowerCase().includes(q) || Object.values(t.platforms).flat().some(f => f.toLowerCase().includes(q)));
             render(filtered);
         });
-
-        function getIndivCmd(toolName, fileName) {
-            const mode = currentModes[toolName] || 'install';
-            const script = mode === 'uninstall' ? 'uninstall.sh' : 'install.sh';
-            return `curl -sSL ${DOMAIN}/scripts/${script} | bash -s -- ${toolName} ${fileName}`;
-        }
 
         init();
     </script>
