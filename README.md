@@ -1,86 +1,90 @@
-# 📦 Yellowbox Distribution Hub
+# 📦 YellowBox | Enterprise Distribution Registry
 
-Welcome to the **Yellowbox Distribution Hub**. This is the official repository for hosting and distributing automation tools (CI/CD, Git utilities) and Helm Charts for the Yellowbox infrastructure.
+YellowBox is a centralized infrastructure resource management and distribution platform, designed to provide a "Single Source of Truth" for multi-platform executables (Binaries) and Kubernetes deployment packages (Helm Charts).
 
-All files hosted here are production-ready compiled binaries or packaged charts, available for immediate download and usage across multiple platforms (Linux, macOS, Windows).
+## 💎 Key Value Propositions
+
+| Feature | Description |
+| :--- | :--- |
+| **Multi-Platform Support** | Consistent, native support for Windows (PowerShell), macOS, and Linux (Bash). |
+| **Smart Architecture** | Auto-detects system architecture (x86_64, ARM64) to deliver the correct resource payload. |
+| **High Availability** | Static-based distribution architecture ensures maximum download speed and ultra-low latency. |
+| **Unified Registry** | Seamlessly combines a Binary Registry and a Helm Repository into a single, cohesive portal. |
 
 ---
 
-## 🚀 Quick Start
+## 🏗 Repository Architecture
 
-### 1. Using Helm Charts
-To deploy services to your Kubernetes cluster, add this repository to your Helm client:
+The storage structure is standardized using a tiered model to optimize management:
 
+```text
+.
+├── .github/
+│   └── workflows/
+│       └── update-dist.yml       # Core Orchestrator (Auto-sync manifests)
+├── bin/                          # Cross-platform binary distribution
+│   ├── <application-id>/         # Application identifier directory
+│   │   ├── darwin-arm64/         # Builds for Apple Silicon (macOS)
+│   │   ├── linux-amd64/          # Builds for Linux Server
+│   │   └── windows-amd64/        # Builds for Windows Desktop
+│   ├── index.html                # Binary management UI
+│   └── manifest.json             # Resource metadata (System Managed)
+├── charts/                       # Kubernetes Helm Repository
+│   ├── index.html                # Helm management UI
+│   ├── index.yaml                # Registry Index (Helm Standard)
+│   └── *.tgz                     # Packaged Helm Charts
+├── scripts/                      # System installation scripts
+│   ├── install.sh / .ps1         # Installers for Unix and Windows
+│   └── uninstall.sh / .ps1       # Uninstallers for Unix and Windows
+├── index.html                    # Central portal gateway (Root Hub)
+└── hub-manifest.json             # Overall system state tracking
+```
+
+---
+
+## 🛠 Quick Start Guide
+
+The system supports rapid command-line installation, making it incredibly easy to integrate into CI/CD pipelines or workstation setups.
+
+### 1. For Unix Environments (macOS / Linux)
+Use Bash to install the desired toolset:
 ```bash
-# Add the Yellowbox Helm Repo
-helm repo add yellowbox https://<your-username>.github.io/yellowbox/charts/
+curl -sSL [https://yellowbox.itblognote.com/scripts/install.sh](https://yellowbox.itblognote.com/scripts/install.sh) | bash -s -- <app_name>
+```
 
-# Update the repository list
+### 2. For Windows Environments
+Use PowerShell to perform the installation:
+```powershell
+$env:APP_NAME='<app_name>'; irm [https://yellowbox.itblognote.com/scripts/install.ps1](https://yellowbox.itblognote.com/scripts/install.ps1) | iex
+```
+
+### 3. Integrating the Helm Repository
+Add YellowBox to your local repository list:
+```bash
+helm repo add yellowbox [https://yellowbox.itblognote.com/charts/](https://yellowbox.itblognote.com/charts/)
 helm repo update
+```
 
-# Search for available charts
-helm search repo yellowbox
+---
 
-2. Installing Tools (Binaries)
+## 🔧 Administration & Scaling
 
-You can automatically download and install Yellowbox CLI tools using our quick installation script (supported on Linux and macOS):
-Bash
+The system is designed around a **"Zero Maintenance UI"** philosophy. Administrators only need to focus on managing resources, not front-end code.
 
-curl -sSL https://<your-username>.github.io/yellowbox/scripts/install.sh | bash
+### Adding a New Resource Category (e.g., `plugins/`)
+1. Create a new directory at the root level.
+2. Update the UI identifier (Color, Icon, Title, Description) in the `ui_config` section of the orchestration config file (`.github/workflows/update-dist.yml`).
+3. Push the code. The central portal will automatically generate a new Category Card without any HTML intervention.
 
-For Windows users: Please navigate directly to the /bin directory to download the .exe executables manually.
-📂 Repository Structure
+### Publishing Binary Applications
+- Place the executables in the correct structure: `bin/<tool-name>/<platform>/`.
+- Push to the `main` branch. The system will automatically update the Manifest and synchronize the installation commands on the web interface instantly.
 
-This repository is organized following standard Distribution Hub practices to ensure stability and accessibility:
+---
 
-    bin/: Contains standalone pre-compiled executables (Binaries). Organized by tool name and platform architecture (darwin-arm64, linux-amd64, windows-amd64).
+## 🛡 Security & Compliance
+- Supports installation at both the System level (`/usr/local/bin`) or Local level (`~/.local/bin`) depending on the user's execution privileges.
+- Auto-path detection ensures users are warned if local binaries are not in their environment variables.
 
-    charts/: The Helm Repository containing packaged .tgz charts and the index.yaml manifest.
-
-    scripts/: Contains automation scripts for environment setup and tool installation.
-
-🧰 Available Tools
-1. cicd-manager
-
-A multi-functional CI/CD lifecycle management suite. It includes the following independent controllers:
-
-    config-controller: Centralized configuration management.
-
-    docker-controller: Handles image build and push pipelines.
-
-    helm-controller: Manages Helm templates and releases.
-
-    k8s-controller: Interacts directly with Kubernetes clusters.
-
-    release-controller: Manages versioning and semantic releases.
-
-    terraform-controller: Infrastructure as Code (IaC) automation.
-
-2. git-push
-
-A utility tool designed to standardize commit workflows and push source code to remote repositories seamlessly.
-3. Helm Charts
-
-    oblivion-sentinel: (v0.0.10) - [Insert a brief description of what this chart does here]
-
-🛠 Maintainer's Guide
-
-This section outlines the basic operations for updating this distribution hub:
-
-Updating the Helm Repository:
-After adding a new .tgz package to the charts/ directory, run the following command at the repository root to rebuild the index:
-Bash
-
-helm repo index charts/ --url https://<your-username>.github.io/yellowbox/charts/
-
-Adding a New Tool or Version:
-
-    Compile the binary for the target platforms.
-
-    Place the executable in the correct path: bin/<tool-name>/<platform-architecture>/.
-
-    (For Windows) Always ensure the file has an .exe extension.
-
-    If a completely new tool is added, update the scripts/install.sh accordingly.
-
-Maintained and developed by the Yellowbox Project. Internal source codes are managed in separate private repositories.
+---
+**YellowBox** - *Professional Infrastructure Delivery*
