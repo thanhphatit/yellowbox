@@ -44,7 +44,7 @@ jobs:
               if os.path.isdir(item) and item not in ignore_dirs and not item.startswith("."):
                   
                   if item == "charts":
-                      # Charts are handled separately using Helm's index.yaml
+                      # Charts are handled separately using Helm index.yaml
                       hub_categories.append({
                           "id": "charts", "title": ui_config["charts"]["title"], "color": ui_config["charts"]["color"],
                           "desc": ui_config["charts"]["desc"], "link": f"./{item}/", "manifest": f"./{item}/index.yaml",
