@@ -3,10 +3,7 @@ name: Auto Update Yellowbox Hub
 on:
   push:
     branches: [main]
-    paths:
-      - 'charts/**'
-      - 'bin/**'
-      - 'scripts/**'
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -20,45 +17,60 @@ jobs:
         with:
           version: latest
 
-      - name: Orchestrate Registry & Hub
+      - name: Orchestrate Universal Hub
         run: |
           python3 -c '
           import os, json, time
 
           hub_categories = []
           
-          # 1. Xử lý thư mục BIN
-          if os.path.exists("bin"):
-              bin_manifest = {"tools": []}
-              for tool in sorted(os.listdir("bin")):
-                  t_path = os.path.join("bin", tool)
-                  if os.path.isdir(t_path) and not tool.startswith("."):
-                      t_data = {"name": tool, "platforms": {}}
-                      for p in sorted(os.listdir(t_path)):
-                          p_path = os.path.join(t_path, p)
-                          if os.path.isdir(p_path):
-                              t_data["platforms"][p] = [f for f in os.listdir(p_path) if os.path.isfile(os.path.join(p_path, f))]
-                      if t_data["platforms"]: bin_manifest["tools"].append(t_data)
-              with open("bin/manifest.json", "w") as f:
-                  json.dump(bin_manifest, f, indent=2)
-              
-              hub_categories.append({
-                  "id": "bin", "title": "Binary Hub", "color": "blue",
-                  "desc": "Bộ công cụ CLI đa nền tảng Win/Mac/Linux. Tự động nhận diện kiến trúc.",
-                  "link": "./bin/", "manifest": "./bin/manifest.json", "type": "json",
-                  "icon_svg": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path></svg>"
-              })
+          # Cấu hình giao diện mặc định cho các thư mục
+          ui_config = {
+              "bin": {"title": "Binary Hub", "color": "blue", "desc": "Bộ công cụ CLI thực thi cho đa nền tảng.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z\"></path></svg>"},
+              "charts": {"title": "Helm Charts", "color": "purple", "desc": "Kho lưu trữ Kubernetes Charts đã được đóng gói.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg>"},
+              "default": {"color": "emerald", "desc": "Danh mục tài nguyên mới được tự động nhận diện.", "icon": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4\"></path></svg>"}
+          }
 
-          # 2. Xử lý thư mục CHARTS
-          if os.path.exists("charts"):
-              hub_categories.append({
-                  "id": "charts", "title": "Helm Charts", "color": "purple",
-                  "desc": "Kho lưu trữ Kubernetes Charts đã được đóng gói và kiểm duyệt.",
-                  "link": "./charts/", "manifest": "./charts/index.yaml", "type": "yaml",
-                  "icon_svg": "<svg class=\"w-7 h-7\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10\"></path></svg>"
-              })
+          # Bỏ qua các thư mục hệ thống hoặc không cần publish
+          ignore_dirs = [".git", ".github", "scripts"]
 
-          # 3. Tạo Hub Manifest cho Root Index.html đọc
+          for item in sorted(os.listdir(".")):
+              if os.path.isdir(item) and item not in ignore_dirs and not item.startswith("."):
+                  
+                  if item == "charts":
+                      # Charts xử lý riêng bằng file index.yaml của Helm
+                      hub_categories.append({
+                          "id": "charts", "title": ui_config["charts"]["title"], "color": ui_config["charts"]["color"],
+                          "desc": ui_config["charts"]["desc"], "link": f"./{item}/", "manifest": f"./{item}/index.yaml",
+                          "type": "yaml", "icon_svg": ui_config["charts"]["icon"]
+                      })
+                  else:
+                      # Bất kỳ thư mục nào khác (bin, pkgs, python...) đều tự động sinh manifest.json
+                      cat_manifest = {"tools": []}
+                      for tool in sorted(os.listdir(item)):
+                          t_path = os.path.join(item, tool)
+                          if os.path.isdir(t_path):
+                              t_data = {"name": tool, "platforms": {}}
+                              for p in sorted(os.listdir(t_path)):
+                                  p_path = os.path.join(t_path, p)
+                                  if os.path.isdir(p_path):
+                                      t_data["platforms"][p] = [f for f in os.listdir(p_path) if os.path.isfile(os.path.join(p_path, f))]
+                              if t_data["platforms"]: cat_manifest["tools"].append(t_data)
+                      
+                      # Chỉ thêm vào Hub nếu thư mục đó thực sự có file bên trong
+                      if cat_manifest["tools"]:
+                          with open(f"{item}/manifest.json", "w") as f:
+                              json.dump(cat_manifest, f, indent=2)
+                          
+                          conf = ui_config.get(item, ui_config["default"])
+                          title = conf.get("title", f"{item.capitalize()} Hub")
+                          
+                          hub_categories.append({
+                              "id": item, "title": title, "color": conf["color"], "desc": conf["desc"],
+                              "link": f"./{item}/", "manifest": f"./{item}/manifest.json",
+                              "type": "json", "icon_svg": conf["icon"]
+                          })
+
           with open("hub-manifest.json", "w") as f:
               json.dump({"categories": hub_categories, "lastUpdated": time.ctime()}, f, indent=2)
           '
@@ -73,5 +85,5 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bin/manifest.json charts/index.yaml hub-manifest.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto sync all manifests [skip ci]" && git push)
+          git add .
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: universal sync [skip ci]" && git push)
