@@ -12,12 +12,12 @@
       "name": "cicd-manager",
       "platforms": {
         "linux-amd64": [
-          "docker-controller",
-          "config-controller",
-          "k8s-controller",
           "terraform-controller",
-          "release-controller",
-          "helm-controller"
+          "helm-controller",
+          "docker-controller",
+          "k8s-controller",
+          "config-controller",
+          "release-controller"
         ]
       }
     },
@@ -29,6 +29,17 @@
         ],
         "linux-amd64": [
           "ez-ufw"
+        ]
+      }
+    },
+    {
+      "name": "git-mirror",
+      "platforms": {
+        "darwin-arm64": [
+          "git-mirror"
+        ],
+        "linux-amd64": [
+          "git-mirror"
         ]
       }
     }
